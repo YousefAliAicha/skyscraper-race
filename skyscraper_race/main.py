@@ -1,12 +1,12 @@
-"""Skyscraper Race Lite — fullscreen game with menu + place arrow.
+"""Skyscraper Race Lite — fullscreen game with left info panel + place arrow.
 
-Controls in match:
+Controls:
   R            roll
   S            scrap
   ↑ / ↓        move place arrow
   Enter/Space  place at arrow
-  click tower  move arrow to that row
-  Esc          quit to menu
+  click tower  move arrow
+  Esc          menu
 """
 
 import tkinter as tk
@@ -23,12 +23,18 @@ from constants import (
 from game import Game
 
 BG = "#0b1020"
+PANEL = "#121a2c"
+CARD = "#182338"
 FG = "#e8eef8"
+MUTED = "#8b9bb4"
 ACCENT = "#3dd68c"
+WARN = "#f0b429"
+DANGER = "#e85d5d"
+P1C = "#4d9fff"
+P2C = "#f0a05a"
 
 
 def run_menu():
-    """Fullscreen menu. Returns 'play' or 'quit'."""
     result = {"action": "quit"}
     root = tk.Tk()
     root.title("Skyscraper Race")
@@ -65,8 +71,16 @@ def run_menu():
     return result["action"]
 
 
+def _section(parent, title, fonts):
+    box = tk.Frame(parent, bg=CARD, padx=14, pady=12)
+    box.pack(fill="x", pady=(0, 12))
+    tk.Label(
+        box, text=title.upper(), font=fonts["label"], bg=CARD, fg=MUTED, anchor="w"
+    ).pack(fill="x", pady=(0, 6))
+    return box
+
+
 def run_match():
-    """Play one match on game2dboard. Returns 'menu' or 'quit'."""
     assets.ensure_assets()
     game = Game("P1", "P2")
     board = Board(BOARD_ROWS, BOARD_COLS)
@@ -78,49 +92,93 @@ def run_match():
     board.cell_color = "#101a2b"
     board.grid_color = "#18253a"
     board.background_image = "bg"
-    # No create_output — we use a real HUD instead
 
-    state = {
-        "cursor": 0,          # insert index 0..n
-        "status": None,       # tk Label
-        "meta": None,         # tk Label (heights)
+    ui = {
+        "cursor": 0,
         "result": "menu",
         "ended": False,
+        # sidebar labels
+        "turn": None,
+        "phase": None,
+        "headline": None,
+        "detail": None,
+        "outcome": None,
+        "events": None,
+        "p1_h": None,
+        "p2_h": None,
+        "p1_bar": None,
+        "p2_bar": None,
+        "rolls": None,
+        "challenge": None,
+        "slot": None,
+        "bar_w": 200,
     }
+
+    fonts = {}
 
     def clamp_cursor():
         n = game.current_player().tower.floor_count()
-        max_pos = min(n, MAX_VISIBLE_FLOORS - 1) if n >= MAX_VISIBLE_FLOORS else n
-        # allow 0..n inclusive (n = place on top)
-        state["cursor"] = max(0, min(state["cursor"], n))
+        ui["cursor"] = max(0, min(ui["cursor"], n))
 
     def reset_cursor_to_top():
-        state["cursor"] = game.current_player().tower.floor_count()
+        ui["cursor"] = game.current_player().tower.floor_count()
 
-    def set_status(text, color=FG):
-        if state["status"] is not None:
-            state["status"].configure(text=text, fg=color)
+    def progress_fill(bar, ratio, color):
+        bar.delete("all")
+        w = ui["bar_w"]
+        h = 14
+        bar.create_rectangle(0, 0, w, h, fill="#0d1422", outline="#2a3a55")
+        fill = max(0, min(w, int(w * ratio)))
+        if fill:
+            bar.create_rectangle(1, 1, fill, h - 1, fill=color, outline="")
 
-    def set_meta():
-        if state["meta"] is None:
-            return
+    def refresh_sidebar():
         p1, p2 = game.players
         cur = game.current_player()
-        nxt = cur.next_challenge()
-        ch = f"   next challenge {nxt}m" if nxt else ""
-        phase = {
-            "roll": "ROLL a floor",
-            "place": f"PLACE with ↑↓ then Enter  (slot {state['cursor']})",
-            "game_over": "MATCH OVER",
-        }.get(game.phase, "")
-        state["meta"].configure(
-            text=(
-                f"P1  {p1.tower_height():.0f}m/{TARGET_HEIGHT}m    "
-                f"P2  {p2.tower_height():.0f}m/{TARGET_HEIGHT}m    "
-                f"Turn {cur.name}  rolls×{cur.rolls_remaining}    "
-                f"{phase}{ch}"
-            )
+        feed = game.feed
+
+        ui["turn"].configure(text=f"{cur.name}  ·  {game.side_hint()} tower")
+        phase_txt = {
+            "roll": "Your move: ROLL",
+            "place": "Your move: PLACE",
+            "game_over": "Match over",
+        }[game.phase]
+        ui["phase"].configure(
+            text=phase_txt,
+            fg=ACCENT if game.phase != "game_over" else MUTED,
         )
+
+        ui["headline"].configure(text=feed["headline"])
+        ui["detail"].configure(text=feed["detail"])
+        ui["outcome"].configure(
+            text=feed["result"],
+            fg=ACCENT if feed["result_ok"] else DANGER,
+        )
+        ev = feed.get("events") or []
+        ui["events"].configure(
+            text="\n".join(ev) if ev else "No challenge this action",
+            fg=WARN if ev else MUTED,
+        )
+
+        ui["p1_h"].configure(text=f"{p1.tower_height():.0f} m")
+        ui["p2_h"].configure(text=f"{p2.tower_height():.0f} m")
+        progress_fill(ui["p1_bar"], p1.tower_height() / TARGET_HEIGHT, P1C)
+        progress_fill(ui["p2_bar"], p2.tower_height() / TARGET_HEIGHT, P2C)
+
+        ui["rolls"].configure(text=f"{cur.rolls_remaining} left this turn")
+        nxt = cur.next_challenge()
+        ui["challenge"].configure(
+            text=f"At {nxt} m" if nxt else "None remaining",
+            fg=DANGER if nxt else MUTED,
+        )
+
+        if game.phase == "place":
+            ui["slot"].configure(
+                text=f"Arrow → slot {ui['cursor']}\n↑↓ move  ·  Enter place",
+                fg=ACCENT,
+            )
+        else:
+            ui["slot"].configure(text="Press R to roll", fg=MUTED)
 
     def status_for(player, floor):
         r = player.tower.safety_ratio(floor)
@@ -138,27 +196,20 @@ def run_match():
     def draw_tower(player, cols, active):
         floors = player.tower.floors_bottom_up()
         n = len(floors)
-        slots = MAX_VISIBLE_FLOORS
-        for i, floor in enumerate(floors[:slots]):
+        for i, floor in enumerate(floors[:MAX_VISIBLE_FLOORS]):
             row = TOWER_BOTTOM_ROW - i
             board[row][cols[1]] = assets.floor_image(
                 floor.material_name, floor.height, status_for(player, floor)
             )
-
         if not (active and game.phase == "place"):
             return
-
         clamp_cursor()
-        pos = state["cursor"]
-        row = TOWER_BOTTOM_ROW - pos
-        if row < TOWER_TOP_ROW:
-            row = TOWER_TOP_ROW
-        # Arrow in the outer column, ghost on the insert cell
+        pos = ui["cursor"]
+        row = max(TOWER_TOP_ROW, TOWER_BOTTOM_ROW - pos)
         board[row][cols[0]] = "arrow"
         if pos >= n:
             board[row][cols[1]] = "insert_here"
         else:
-            # inserting into existing band — mark center as HERE overlay feel
             board[row][cols[2]] = "insert_here"
 
     def draw():
@@ -180,43 +231,29 @@ def run_match():
         if cur.next_challenge():
             board[1][3] = "challenge"
             board[1][6] = assets.height_chip(int(cur.next_challenge()), (200, 70, 70))
-
         pending = cur.current_roll
         if pending and game.phase == "place":
             board[1][7] = assets.floor_image(
                 pending["material_name"], pending["height"], "ok"
             )
-
         for c in P1_COLS + P2_COLS:
             board[GROUND_ROW][c] = "ground"
-
         draw_tower(p1, P1_COLS, game.current_index == 0)
         draw_tower(p2, P2_COLS, game.current_index == 1)
-
-        color = FG
-        msg = game.message
-        if "COLLAPSE" in msg:
-            color = "#e85d5d"
-        elif "WINS" in msg:
-            color = ACCENT
-        elif game.phase == "place":
-            color = ACCENT
-        set_status(msg, color)
-        set_meta()
+        refresh_sidebar()
 
     def finish_match():
-        if state["ended"]:
+        if ui["ended"]:
             return
-        state["ended"] = True
+        ui["ended"] = True
         winner = game.winner
         height = winner.tower_height() if winner else 0
         name = winner.name if winner else "?"
 
         def close_board_and(action):
-            state["result"] = action
+            ui["result"] = action
             board._root.destroy()
 
-        # Replace board UI with victory card on same root
         root = board._root
         for w in root.winfo_children():
             w.destroy()
@@ -231,7 +268,7 @@ def run_match():
     def after_action():
         draw()
         if game.phase == "game_over":
-            board._root.after(350, finish_match)
+            board._root.after(400, finish_match)
 
     def row_to_pos(row):
         if row < TOWER_TOP_ROW or row > TOWER_BOTTOM_ROW:
@@ -239,6 +276,11 @@ def run_match():
         idx = TOWER_BOTTOM_ROW - row
         n = game.current_player().tower.floor_count()
         return n if idx >= n else idx
+
+    def flash_error(msg):
+        game.feed["result"] = msg
+        game.feed["result_ok"] = False
+        refresh_sidebar()
 
     def on_click(_btn, row, col):
         if game.phase == "game_over":
@@ -254,127 +296,170 @@ def run_match():
                 cols = P1_COLS if game.current_index == 0 else P2_COLS
                 other = P2_COLS if game.current_index == 0 else P1_COLS
                 if col in other:
-                    set_status(f"Wrong tower — use the {game.side_hint()} side", "#e85d5d")
+                    flash_error(f"Use the {game.side_hint()} tower")
                     return
                 if col in cols:
                     pos = row_to_pos(row)
                     if pos is None:
                         return
-                    # Click moves the arrow to that row (does not place yet)
-                    state["cursor"] = pos
-                    set_status(
-                        f"Arrow at slot {pos} — press Enter to place",
-                        ACCENT,
-                    )
+                    ui["cursor"] = pos
                     draw()
                     return
             after_action()
         except RuntimeError as e:
-            set_status(str(e), "#e85d5d")
+            flash_error(str(e))
 
     def on_key(key):
         if game.phase == "game_over":
             return
         try:
             if key in ("Escape", "Esc"):
-                state["result"] = "menu"
+                ui["result"] = "menu"
                 board._root.destroy()
                 return
-
             if key in ("r", "R"):
                 game.roll()
                 reset_cursor_to_top()
             elif key in ("s", "S"):
                 game.scrap_roll()
                 reset_cursor_to_top()
-            elif key in ("Up",):
-                if game.phase == "place":
-                    state["cursor"] += 1
-                    clamp_cursor()
-                    draw()
-                    return
-            elif key in ("Down",):
-                if game.phase == "place":
-                    state["cursor"] -= 1
-                    clamp_cursor()
-                    draw()
-                    return
+            elif key == "Up" and game.phase == "place":
+                ui["cursor"] += 1
+                clamp_cursor()
+                draw()
+                return
+            elif key == "Down" and game.phase == "place":
+                ui["cursor"] -= 1
+                clamp_cursor()
+                draw()
+                return
             elif key in ("space", "Return", " ", "KP_Enter"):
                 if game.phase == "place":
                     clamp_cursor()
-                    game.place_floor(state["cursor"])
+                    game.place_floor(ui["cursor"])
                     reset_cursor_to_top()
                 elif game.phase == "roll":
-                    set_status("Roll first (R)", "#f0b429")
+                    flash_error("Roll first (R)")
                     return
             after_action()
         except RuntimeError as e:
-            set_status(str(e), "#e85d5d")
+            flash_error(str(e))
 
     def on_start():
         root = board._root
         try:
             root.attributes("-fullscreen", True)
         except tk.TclError:
-            root.geometry("1100x900")
+            root.geometry("1280x900")
         root.configure(bg=BG)
 
-        # Rebuild layout: HUD on top, board, help bar
+        fonts["title"] = tkfont.Font(family="DejaVu Sans", size=18, weight="bold")
+        fonts["label"] = tkfont.Font(family="DejaVu Sans", size=10, weight="bold")
+        fonts["body"] = tkfont.Font(family="DejaVu Sans", size=14)
+        fonts["big"] = tkfont.Font(family="DejaVu Sans", size=20, weight="bold")
+        fonts["huge"] = tkfont.Font(family="DejaVu Sans", size=26, weight="bold")
+        fonts["small"] = tkfont.Font(family="DejaVu Sans", size=11)
+
         board._canvas.pack_forget()
 
-        top = tk.Frame(root, bg=BG)
-        top.pack(side="top", fill="x")
+        # --- body: left sidebar + board ---
+        body = tk.Frame(root, bg=BG)
+        body.pack(side="top", fill="both", expand=True)
 
-        title_font = tkfont.Font(family="DejaVu Sans", size=18, weight="bold")
-        body_font = tkfont.Font(family="DejaVu Sans", size=15)
-        small = tkfont.Font(family="DejaVu Sans", size=12)
-
-        tk.Label(
-            top,
-            text="SKYSCRAPER RACE",
-            font=title_font,
-            bg=BG,
-            fg=ACCENT,
-            pady=6,
-        ).pack()
-
-        state["meta"] = tk.Label(
-            top, text="", font=small, bg="#121a2c", fg="#9eb0c8", pady=8
-        )
-        state["meta"].pack(fill="x")
-
-        state["status"] = tk.Label(
-            top,
-            text=game.message,
-            font=body_font,
-            bg="#162033",
-            fg=FG,
-            pady=14,
-            wraplength=1000,
-            justify="center",
-        )
-        state["status"].pack(fill="x", padx=0, pady=(0, 4))
-
-        board._canvas.pack(side="top", expand=True)
+        side = tk.Frame(body, bg=PANEL, width=320, padx=18, pady=18)
+        side.pack(side="left", fill="y")
+        side.pack_propagate(False)
 
         tk.Label(
-            root,
-            text="↑↓ move arrow   ·   Enter / Space place   ·   R roll   ·   S scrap   ·   Esc menu",
-            font=small,
-            bg=BG,
-            fg="#7f8ea3",
-            pady=10,
-        ).pack(side="bottom", fill="x")
+            side, text="SKYSCRAPER", font=fonts["title"], bg=PANEL, fg=ACCENT
+        ).pack(anchor="w")
+        tk.Label(
+            side, text="RACE", font=fonts["title"], bg=PANEL, fg=FG
+        ).pack(anchor="w", pady=(0, 16))
+
+        # Turn
+        box = _section(side, "Now playing", fonts)
+        ui["turn"] = tk.Label(box, text="", font=fonts["big"], bg=CARD, fg=FG, anchor="w")
+        ui["turn"].pack(fill="x")
+        ui["phase"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=ACCENT, anchor="w")
+        ui["phase"].pack(fill="x", pady=(4, 0))
+
+        # Last action
+        box = _section(side, "Last action", fonts)
+        ui["headline"] = tk.Label(
+            box, text="", font=fonts["big"], bg=CARD, fg=FG, anchor="w", wraplength=260, justify="left"
+        )
+        ui["headline"].pack(fill="x")
+        ui["detail"] = tk.Label(
+            box, text="", font=fonts["body"], bg=CARD, fg=MUTED, anchor="w", wraplength=260, justify="left"
+        )
+        ui["detail"].pack(fill="x", pady=(4, 0))
+
+        # Outcome
+        box = _section(side, "Result", fonts)
+        ui["outcome"] = tk.Label(
+            box, text="", font=fonts["big"], bg=CARD, fg=ACCENT, anchor="w", wraplength=260, justify="left"
+        )
+        ui["outcome"].pack(fill="x")
+        ui["events"] = tk.Label(
+            box, text="", font=fonts["small"], bg=CARD, fg=MUTED, anchor="w", wraplength=260, justify="left"
+        )
+        ui["events"].pack(fill="x", pady=(6, 0))
+
+        # Heights
+        box = _section(side, f"Height  /  {TARGET_HEIGHT} m", fonts)
+        row1 = tk.Frame(box, bg=CARD)
+        row1.pack(fill="x")
+        tk.Label(row1, text="P1", font=fonts["body"], bg=CARD, fg=P1C).pack(side="left")
+        ui["p1_h"] = tk.Label(row1, text="0 m", font=fonts["body"], bg=CARD, fg=FG)
+        ui["p1_h"].pack(side="right")
+        ui["p1_bar"] = tk.Canvas(box, width=ui["bar_w"], height=14, bg=CARD, highlightthickness=0)
+        ui["p1_bar"].pack(fill="x", pady=(4, 10))
+
+        row2 = tk.Frame(box, bg=CARD)
+        row2.pack(fill="x")
+        tk.Label(row2, text="P2", font=fonts["body"], bg=CARD, fg=P2C).pack(side="left")
+        ui["p2_h"] = tk.Label(row2, text="0 m", font=fonts["body"], bg=CARD, fg=FG)
+        ui["p2_h"].pack(side="right")
+        ui["p2_bar"] = tk.Canvas(box, width=ui["bar_w"], height=14, bg=CARD, highlightthickness=0)
+        ui["p2_bar"].pack(fill="x", pady=(4, 0))
+
+        # Rolls + challenge
+        box = _section(side, "Rolls", fonts)
+        ui["rolls"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=FG, anchor="w")
+        ui["rolls"].pack(fill="x")
+
+        box = _section(side, "Next challenge", fonts)
+        ui["challenge"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=DANGER, anchor="w")
+        ui["challenge"].pack(fill="x")
+
+        # Placement
+        box = _section(side, "Placement", fonts)
+        ui["slot"] = tk.Label(
+            box, text="", font=fonts["body"], bg=CARD, fg=ACCENT, anchor="w", justify="left"
+        )
+        ui["slot"].pack(fill="x")
+
+        tk.Label(
+            side,
+            text="R roll · S scrap · Esc menu",
+            font=fonts["small"],
+            bg=PANEL,
+            fg=MUTED,
+        ).pack(side="bottom", anchor="w", pady=(12, 0))
+
+        # Board on the right
+        board_wrap = tk.Frame(body, bg=BG)
+        board_wrap.pack(side="left", fill="both", expand=True)
+        board._canvas.pack(in_=board_wrap, expand=True)
 
         draw()
 
     board.on_start = on_start
     board.on_mouse_click = on_click
     board.on_key_press = on_key
-    # Pre-draw values before show so cells exist after setup
-    # (actual draw runs in on_start)
     board.show()
-    return state["result"]
+    return ui["result"]
 
 
 def main():

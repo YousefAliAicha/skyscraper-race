@@ -16,6 +16,13 @@ class Game:
         self.last_collapse = None
         self.last_events = []
         self.enable_challenges = enable_challenges
+        self.feed = {
+            "headline": "Match start",
+            "detail": "Press R or click ROLL",
+            "result": "Waiting",
+            "result_ok": True,
+            "events": [],
+        }
         self.message = self._prompt_roll()
 
     def current_player(self):
@@ -26,18 +33,22 @@ class Game:
 
     def _prompt_roll(self):
         p = self.current_player()
-        nxt = p.next_challenge()
-        ch = f" next⚠{nxt}m" if nxt else ""
-        return (
-            f"{p.name} ({self.side_hint()}) — ROLL/R  "
-            f"[{p.rolls_remaining} left]{ch}"
-        )
+        return f"{p.name}'s turn — roll a floor"
+
+    def _set_feed(self, headline, detail, result="OK", result_ok=True, events=None):
+        self.feed = {
+            "headline": headline,
+            "detail": detail,
+            "result": result,
+            "result_ok": result_ok,
+            "events": events or [],
+        }
 
     def roll(self):
         if self.phase == "game_over":
-            raise RuntimeError("Game over — restart the app")
+            raise RuntimeError("Game over")
         if self.phase != "roll":
-            raise RuntimeError("Place (Space) or Scrap first")
+            raise RuntimeError("Place or scrap first")
         p = self.current_player()
         if p.rolls_remaining <= 0:
             raise RuntimeError("No rolls left")
@@ -45,14 +56,15 @@ class Game:
         p.current_roll = decoded
         p.rolls_remaining -= 1
         self.phase = "place"
-        tip = ""
-        if decoded["tier"] == "junk":
-            tip = " (junk — keep on TOP or SCRAP)"
-        elif decoded["tier"] == "strong":
-            tip = " (strong — good for BASE)"
-        self.message = (
-            f"{p.name}: {decoded['material_name'].upper()} {decoded['height']}m"
-            f"{tip} — Space=TOP · S=scrap"
+        tip = "Keep on TOP or scrap" if decoded["tier"] == "junk" else (
+            "Good for the BASE" if decoded["tier"] == "strong" else "Place with ↑↓"
+        )
+        self.message = f"Rolled {decoded['material_name']} {decoded['height']}m"
+        self._set_feed(
+            f"Rolled {decoded['material_name'].upper()}",
+            f"{decoded['height']} m tall  ·  {tip}",
+            result="Choose height with ↑↓",
+            result_ok=True,
         )
         return decoded
 
@@ -61,9 +73,10 @@ class Game:
             raise RuntimeError("Nothing to scrap")
         p = self.current_player()
         p.current_roll = None
+        self._set_feed("Scrapped", "Roll discarded", "OK", True)
         if p.rolls_remaining > 0:
             self.phase = "roll"
-            self.message = f"Scrapped. {self._prompt_roll()}"
+            self.message = self._prompt_roll()
         else:
             self.end_turn()
 
@@ -78,34 +91,38 @@ class Game:
         self.last_collapse = None
         self.last_events = []
 
-        notes = [
-            f"+{decoded['material_name']} {decoded['height']}m → {p.tower_height():.0f}m"
-        ]
-
-        # Challenges when tower crosses hidden heights
+        events = []
         if self.enable_challenges:
             events, _ = process_challenges(p.tower, p.challenge_heap)
             self.last_events = events
-            notes.extend(events)
 
-        # Stability after place + damage
         collapsed = self._resolve_stability(p)
+        height = p.tower_height()
         if collapsed:
-            notes.append(
-                f"COLLAPSE -{len(self.last_collapse[0])}floors/"
-                f"{self.last_collapse[1]:.0f}m"
+            fallen, lost = self.last_collapse
+            self._set_feed(
+                f"Placed {decoded['material_name'].upper()} {decoded['height']}m",
+                f"Slot {pos}  ·  tower now {height:.0f} m",
+                result=f"COLLAPSE  −{len(fallen)} floors  (−{lost:.0f} m)",
+                result_ok=False,
+                events=events,
             )
-            # Challenges stay cleared once triggered (no re-queue) so
-            # rebuilding after a collapse is possible.
-
-        self.message = " · ".join(notes) + f" /{TARGET_HEIGHT}m"
+            self.message = f"Collapse! tower {height:.0f}m"
+        else:
+            self._set_feed(
+                f"Placed {decoded['material_name'].upper()} {decoded['height']}m",
+                f"Slot {pos}  ·  tower now {height:.0f} m",
+                result="Stable",
+                result_ok=True,
+                events=events,
+            )
+            self.message = f"Placed — {height:.0f}m"
 
         if self.check_win():
             return {"collapsed": collapsed, "won": True}
 
         if p.rolls_remaining > 0:
             self.phase = "roll"
-            self.message += f" — ROLL [{p.rolls_remaining}]"
         else:
             self.end_turn()
         return {"collapsed": collapsed, "won": False}
@@ -127,7 +144,13 @@ class Game:
             self.winner = p
             self.phase = "game_over"
             p.won = True
-            self.message = f"{p.name} WINS at {p.tower_height():.0f}m!"
+            self.message = f"{p.name} wins!"
+            self._set_feed(
+                f"{p.name} WINS",
+                f"Tower reached {p.tower_height():.0f} m",
+                result="Victory",
+                result_ok=True,
+            )
             return True
         return False
 
@@ -137,4 +160,11 @@ class Game:
         self.current_index = 1 - self.current_index
         self.current_player().reset_rolls()
         self.phase = "roll"
-        self.message = f"Turn → {self._prompt_roll()}"
+        self.message = self._prompt_roll()
+        p = self.current_player()
+        self._set_feed(
+            f"{p.name}'s turn",
+            f"Build on the {self.side_hint()} tower",
+            result=f"{p.rolls_remaining} rolls ready",
+            result_ok=True,
+        )

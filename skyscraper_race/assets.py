@@ -185,6 +185,29 @@ def rolls_chip(n: int):
     return key
 
 
+def make_arrow():
+    """Placement cursor — bright arrow pointing at insert row."""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    # glow circle
+    d.ellipse((8, 8, SIZE - 9, SIZE - 9), fill=(30, 80, 50), outline=(100, 255, 160), width=3)
+    # arrow pointing right into the tower
+    d.polygon(
+        [(14, SIZE // 2), (34, 18), (34, 28), (50, 28), (50, 36), (34, 36), (34, SIZE - 18)],
+        fill=(180, 255, 200),
+    )
+    _save(img, "arrow")
+
+
+def make_insert_ghost():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    _rounded(d, (4, 10, SIZE - 5, SIZE - 10), 8, fill=(40, 100, 80), outline=(120, 255, 180), width=2)
+    font = _font(11, bold=True)
+    d.text((SIZE // 2, SIZE // 2), "HERE", font=font, fill=(200, 255, 220), anchor="mm")
+    _save(img, "insert_here")
+
+
 def ensure_assets():
     """Create/refresh all static assets."""
     for name in MAT:
@@ -199,6 +222,8 @@ def ensure_assets():
     make_ground()
     make_bg()
     make_challenge_icon()
+    make_arrow()
+    make_insert_ghost()
     Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0)).save(IMG / "empty.png")
     for n in range(0, 4):
         rolls_chip(n)

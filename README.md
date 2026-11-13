@@ -1,17 +1,16 @@
 # Skyscraper Race Lite
 
-2-player race to **150 m**. Python + `game2dboard`.
+Fullscreen 2-player race to **150 m**. Python + `game2dboard`.
 
 ## DSA
 
 | Topic | Where |
 |-------|--------|
 | Hash table | `materials.py` |
-| Linked list | `tower.py` insert/remove |
-| Recursion | `tower.load_above` |
-| Stack | `tower.collapse` |
-| Min-heap | `challenges.py` schedule |
-| Binary search | `find_floor_at_height` |
+| Linked list | `tower.py` |
+| Recursion | `load_above` |
+| Stack | `collapse` |
+| Min-heap + binary search | `challenges.py` |
 
 ## Run
 
@@ -19,21 +18,21 @@
 git clone -b cursor/project-scaffold-a034 https://github.com/YousefAliAicha/skyscraper-race.git
 cd skyscraper-race
 pip install -r requirements.txt
-# GUI needs tkinter:  sudo apt install python3-tk
+# Ubuntu: sudo apt install python3-tk
 cd skyscraper_race
 python test_core.py
-python demo.py
 python main.py
 ```
 
 ## Controls
 
-| Action | How |
-|--------|-----|
-| Roll | green **ROLL** or `R` |
-| Place on top | **Space** / Enter (easiest) |
-| Place elsewhere | click your tower / green **TOP** |
-| Scrap | red **SCRAP** or `S` |
+| Key | Action |
+|-----|--------|
+| `R` | Roll |
+| `↑` `↓` | Move place **arrow** (any height) |
+| `Enter` / `Space` | Place at the arrow |
+| Click tower row | Move arrow there |
+| `S` | Scrap roll |
+| `Esc` | Back to menu |
 
-P1 = left tower, P2 = right. First to 150 m wins.  
-Yellow **!** chip = next challenge height (earthquake / windstorm / drunk driver).
+**Tip:** steel/concrete at the **base**, junk on **top** (or scrap). First to 150 m wins.

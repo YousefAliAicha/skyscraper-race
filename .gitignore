@@ -14,3 +14,6 @@ venv/
 *.log
 .pytest_cache/
 .mypy_cache/
+skyscraper_race/img/fl_*.png
+skyscraper_race/img/ht_*.png
+skyscraper_race/__pycache__/

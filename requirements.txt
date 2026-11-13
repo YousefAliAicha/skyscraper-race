@@ -1,1 +1,2 @@
 game2dboard>=0.9.0
+Pillow>=10.0.0

@@ -38,7 +38,7 @@ DRUNK_DRIVER_DAMAGE = 0.25  # ground floor
 # --- Board layout (game2dboard) ---
 BOARD_ROWS = 14
 BOARD_COLS = 10
-CELL_SIZE = 60
+CELL_SIZE = 64
 
 P1_COLS = (0, 1, 2)
 P2_COLS = (7, 8, 9)

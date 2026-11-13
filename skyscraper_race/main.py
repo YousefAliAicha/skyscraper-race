@@ -1,103 +1,90 @@
-"""game2dboard UI. Run: python main.py
-
-Controls:
-  ROLL / R     — roll a floor
-  SCRAP / S    — discard roll
-  Space / Enter — place on TOP of your tower
-  click your tower column — place at that height
-  0-9          — place at linked-list index
-"""
+"""Skyscraper Race Lite — polished game2dboard UI.  python main.py"""
 
 from game2dboard import Board
+
+import assets
 from constants import (
-    BOARD_COLS, BOARD_ROWS, CELL_SIZE, GROUND_ROW, TARGET_HEIGHT,
+    BOARD_COLS, BOARD_ROWS, CELL_SIZE, GROUND_ROW,
     P1_COLS, P2_COLS, TOWER_BOTTOM_ROW, TOWER_TOP_ROW,
 )
 from game import Game
+
+assets.ensure_assets()
 
 game = Game("P1", "P2")
 board = Board(BOARD_ROWS, BOARD_COLS)
 board.cell_size = CELL_SIZE
 board.title = "Skyscraper Race Lite"
-board.create_output(font_size=13)
+board.margin = 14
+board.cell_spacing = 4
+board.margin_color = "#0b1020"
+board.cell_color = "#101a2b"
+board.grid_color = "#18253a"
+board.background_image = "bg"
+board.create_output(font_size=13, background_color="#0b1020", color="#d7e2f5")
 
 
-def clear_board():
+def clear():
     for r in range(BOARD_ROWS):
         for c in range(BOARD_COLS):
             board[r][c] = None
 
 
-def active_cols():
-    return P1_COLS if game.current_index == 0 else P2_COLS
-
-
-def ratio_label(player, floor):
+def status_for(player, floor):
     r = player.tower.safety_ratio(floor)
-    if r == float("inf"):
-        return "ok"
     if r < 1.0:
-        return "FAIL"
+        return "fail"
     if r < 1.5:
-        return f"!{r:.1f}"
-    return f"{r:.1f}"
+        return "warn"
+    return "ok"
 
 
-def draw_tower(player, cols, is_active):
+def draw_tower(player, cols, active):
     floors = player.tower.floors_bottom_up()
     n = len(floors)
-    max_slots = TOWER_BOTTOM_ROW - TOWER_TOP_ROW + 1
-
-    for i, floor in enumerate(floors[:max_slots]):
+    slots = TOWER_BOTTOM_ROW - TOWER_TOP_ROW + 1
+    for i, floor in enumerate(floors[:slots]):
         row = TOWER_BOTTOM_ROW - i
-        board[row][cols[0]] = f"{floor.height}m"
-        board[row][cols[1]] = floor.image
-        board[row][cols[2]] = ratio_label(player, floor)
-
-    # Placement hints on the active tower during place phase
-    if is_active and game.phase == "place":
-        # Slot above the top (= append)
-        if n < max_slots:
-            row = TOWER_BOTTOM_ROW - n
-            board[row][cols[1]] = "TOP"
-            board[row][cols[0]] = ">>>"
-        # Mark ground slot if empty
-        if n == 0:
-            board[TOWER_BOTTOM_ROW][cols[1]] = "TOP"
-            board[TOWER_BOTTOM_ROW][cols[0]] = ">>>"
+        board[row][cols[1]] = assets.floor_image(
+            floor.material_name, floor.height, status_for(player, floor)
+        )
+    if active and game.phase == "place" and n < slots:
+        board[TOWER_BOTTOM_ROW - n][cols[1]] = "slot_top"
 
 
 def draw():
-    clear_board()
+    clear()
     p1, p2 = game.players
 
-    # HUD row 0
-    board[0][0], board[0][1] = "p1", f"{p1.tower_height():.0f}m"
-    board[0][2] = f"{p1.floor_count()}f"
-    board[0][4] = f"/{TARGET_HEIGHT}"
-    board[0][7], board[0][8] = "p2", f"{p2.tower_height():.0f}m"
-    board[0][9] = f"{p2.floor_count()}f"
+    board[0][0] = "badge_p1"
+    board[0][1] = assets.height_chip(int(p1.tower_height()), (80, 140, 220))
+    board[0][2] = assets.rolls_chip(p1.rolls_remaining) if game.current_index == 0 else None
+    board[0][4] = "badge_goal"
+    board[0][7] = "badge_p2"
+    board[0][8] = assets.height_chip(int(p2.tower_height()), (220, 140, 70))
+    board[0][9] = assets.rolls_chip(p2.rolls_remaining) if game.current_index == 1 else None
 
-    # Action row 1
-    board[1][4] = "ROLL"
-    board[1][5] = "SCRAP"
+    board[1][4] = "btn_roll"
+    board[1][5] = "btn_scrap"
     if game.current_index == 0:
-        board[1][0] = "YOU"
-        board[1][3] = ">>>"
+        board[1][0] = "badge_you"
     else:
-        board[1][9] = "YOU"
-        board[1][6] = "<<<"
+        board[1][9] = "badge_you"
 
     cur = game.current_player()
-    board[1][2] = f"x{cur.rolls_remaining}"
+    nxt = cur.next_challenge()
+    if nxt:
+        board[1][3] = "challenge"
+        board[1][6] = assets.height_chip(int(nxt), (200, 70, 70))
 
     pending = cur.current_roll
     if pending and game.phase == "place":
-        board[1][7] = pending["image"]
-        board[1][8] = f"{pending['height']}m"
+        board[1][7] = assets.floor_image(
+            pending["material_name"], pending["height"], "ok"
+        )
 
     for c in P1_COLS + P2_COLS:
-        board[GROUND_ROW][c] = "===="
+        board[GROUND_ROW][c] = "ground"
 
     draw_tower(p1, P1_COLS, game.current_index == 0)
     draw_tower(p2, P2_COLS, game.current_index == 1)
@@ -112,7 +99,7 @@ def row_to_pos(player, row):
     return n if idx >= n else idx
 
 
-def on_click(btn, row, col):
+def on_click(_btn, row, col):
     if game.phase == "game_over":
         return draw()
     try:
@@ -121,22 +108,21 @@ def on_click(btn, row, col):
         elif row == 1 and col == 5:
             game.scrap_roll()
         elif game.phase == "place":
-            cols = active_cols()
+            cols = P1_COLS if game.current_index == 0 else P2_COLS
             other = P2_COLS if game.current_index == 0 else P1_COLS
             if col in other:
-                board.print(f"Wrong tower — place on the {game.side_hint()} side")
+                board.print(f"Wrong side — place on the {game.side_hint()} tower")
                 return
             if col in cols:
                 pos = row_to_pos(game.current_player(), row)
-                if pos is not None:
-                    game.place_floor(pos)
-                else:
-                    board.print("Click a tower slot (>>> TOP) or press Space")
+                if pos is None:
+                    board.print("Click the green TOP slot or press Space")
                     return
+                game.place_floor(pos)
             else:
-                board.print(f"Click your {game.side_hint()} tower, or Space for top")
+                board.print(f"Click {game.side_hint()} tower or press Space")
                 return
-        elif game.phase == "roll":
+        else:
             board.print(game.message)
             return
         draw()

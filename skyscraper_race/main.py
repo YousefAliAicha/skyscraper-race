@@ -1,4 +1,4 @@
-"""Entry point — game2dboard UI shell.
+"""Entry point — game2dboard UI.
 
 Run from this folder:
     python main.py
@@ -34,58 +34,111 @@ def clear_board():
             board[r][c] = None
 
 
+def _draw_tower(player, cols):
+    """Render linked-list tower bottom-up into board rows."""
+    floors = player.tower.floors_bottom_up()
+    # Visible slots: GROUND_ROW-1 down toward TOWER_TOP_ROW
+    visible = floors[: TOWER_BOTTOM_ROW - TOWER_TOP_ROW + 1]
+    for i, floor in enumerate(visible):
+        row = TOWER_BOTTOM_ROW - i
+        ratio = player.tower.safety_ratio(floor)
+        ratio_txt = "inf" if ratio == float("inf") else f"{ratio:.1f}"
+        board[row][cols[0]] = f"{floor.height}m"
+        board[row][cols[1]] = floor.image  # img/<name>.png if present
+        board[row][cols[2]] = ratio_txt
+
+
 def draw_hud():
-    """Static labels + heights. Floor cells filled once Tower.insert_at works."""
     clear_board()
 
-    # Row 0 — player HUD
-    board[0][P1_COLS[0]] = "P1"
+    board[0][P1_COLS[0]] = "p1"
     board[0][P1_COLS[1]] = "ht:"
     board[0][P1_COLS[2]] = f"{game.players[0].tower_height():.0f}m"
 
-    board[0][P2_COLS[0]] = "P2"
+    board[0][P2_COLS[0]] = "p2"
     board[0][P2_COLS[1]] = "ht:"
     board[0][P2_COLS[2]] = f"{game.players[1].tower_height():.0f}m"
 
-    # Row 1 — actions (scaffold labels; wire clicks in Step 9/10)
     board[1][4] = "ROLL"
     board[1][5] = "SCRAP"
 
-    # Ground row markers
+    # Whose turn marker in center
+    board[1][3] = ">>" if game.current_index == 0 else ""
+    board[1][6] = "<<" if game.current_index == 1 else ""
+
     for c in P1_COLS + P2_COLS:
         board[GROUND_ROW][c] = "===="
 
-    # Empty tower slots (visual guide)
-    for r in range(TOWER_TOP_ROW, TOWER_BOTTOM_ROW + 1):
-        board[r][P1_COLS[1]] = "·"
-        board[r][P2_COLS[1]] = "·"
+    _draw_tower(game.players[0], P1_COLS)
+    _draw_tower(game.players[1], P2_COLS)
+
+    # Pending roll preview
+    pending = game.current_player().current_roll
+    if pending and game.phase == "place":
+        board[1][7] = pending["image"]
+        board[1][8] = f"{pending['height']}m"
 
     board.print(game.message)
 
 
+def _row_to_insert_position(player, row: int):
+    """Map a clicked tower row to a linked-list insert position."""
+    if row < TOWER_TOP_ROW or row > TOWER_BOTTOM_ROW:
+        return None
+    # Clicking empty space above the tower appends at top
+    n = player.tower.floor_count()
+    # Row TOWER_BOTTOM_ROW is ground (pos 0 visual). Clicking a filled
+    # row inserts *at that index* (replacing that slot upward).
+    index_from_bottom = TOWER_BOTTOM_ROW - row
+    if index_from_bottom >= n:
+        return n  # append on top
+    return index_from_bottom
+
+
 def on_click(btn, row, col):
     if game.phase == "game_over":
+        draw_hud()
+        return
+
+    try:
+        if row == 1 and col == 4:
+            game.roll()
+            draw_hud()
+            return
+        if row == 1 and col == 5:
+            game.scrap_roll()
+            draw_hud()
+            return
+
+        player = game.current_player()
+        cols = P1_COLS if game.current_index == 0 else P2_COLS
+        if col in cols and game.phase == "place":
+            pos = _row_to_insert_position(player, row)
+            if pos is not None:
+                game.place_floor(pos)
+                draw_hud()
+                return
+
         board.print(game.message)
-        return
-
-    # Scaffold: announce the click; real handlers come in Step 9/10
-    if row == 1 and col == 4:
-        board.print(f"{game.current_player().name}: ROLL clicked (not wired yet)")
-        return
-    if row == 1 and col == 5:
-        board.print(f"{game.current_player().name}: SCRAP clicked (not wired yet)")
-        return
-
-    board.print(f"Click ({row},{col}) btn={btn} — placement wiring comes later")
+    except RuntimeError as exc:
+        board.print(str(exc))
 
 
 def on_key(key):
-    if key in ("r", "R"):
-        board.print("Key R — will call game.roll() once implemented")
-    elif key in ("s", "S"):
-        board.print("Key S — will call game.scrap_roll() once implemented")
-    else:
-        board.print(f"Key {key!r}")
+    if game.phase == "game_over":
+        draw_hud()
+        return
+    try:
+        if key in ("r", "R"):
+            game.roll()
+        elif key in ("s", "S"):
+            game.scrap_roll()
+        elif key.isdigit() and game.phase == "place":
+            # Number key = insert position
+            game.place_floor(int(key))
+        draw_hud()
+    except RuntimeError as exc:
+        board.print(str(exc))
 
 
 def main():

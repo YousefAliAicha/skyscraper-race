@@ -11,9 +11,10 @@ Each turn you roll a 5-digit number that becomes a floor (material, amount, heig
 | Topic | Module | Role |
 |-------|--------|------|
 | Hash table | `materials.py` | Material / tier lookup |
-| Linked list | `tower.py` | Tower + insert at position |
+| Linked list | `tower.py` | Tower + insert / remove |
 | Recursion | `tower.py` | `load_above` / safety |
 | Stack | `tower.py` | Collapse failed floors |
+| Sequential search | `tower.py` | `find_weakest_floor` |
 | Min-heap + binary search | `challenges.py` | **Phase 2 / optional** |
 
 ## Layout
@@ -28,6 +29,7 @@ skyscraper_race/
   player.py        # Player state
   game.py          # Turn logic (no GUI)
   main.py          # game2dboard UI
+  test_core.py     # Headless tests
   img/             # PNG assets for cells
 ```
 
@@ -38,24 +40,32 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cd skyscraper_race
-python main.py
+python test_core.py   # should print All core tests passed
+python main.py        # opens the board
 ```
 
-## Scaffold status
+### Controls
+- **ROLL** cell or key `R` — roll
+- **SCRAP** cell or key `S` — discard roll
+- Click your tower column / row — place floor at that height
+- Number keys `0`–`9` — place at that linked-list index
+
+## Status
 
 **Done**
-- Folder layout, constants, material table, roll interface
-- `Floor` / `Tower` / `Player` / `Game` shells
-- Board HUD shell (click/key stubs)
-- Placeholder PNGs in `img/`
+- Material hash table + roll / full_decode (guide test cases)
+- `Floor` with multiplicative damage + capacity property
+- `Tower` doubly linked list: insert, remove, traverse
+- Recursive `load_above`, safety ratio, weakest-floor scan
+- Stack-based `collapse` with cascade
+- `Game` turn loop: roll / scrap / place / win
+- Board UI wired to game logic
+- Headless tests in `test_core.py`
 
-**Not implemented yet** (raise `NotImplementedError` until filled in)
-- `Tower.insert_at`, `load_above`, `safety_ratio`, `find_weakest_floor`, `collapse`
-- `Game.roll` / `scrap_roll` / `place_floor`
-- Challenge generation + processing
-- Wiring UI actions to game logic
-
-Build order: tower mechanics → game loop → UI wiring → (optional) challenges.
+**Still optional**
+- Challenge system (`challenges.py` — heap + binary search)
+- Nicer art than placeholder PNGs
+- Presentation Q&A cards per teammate
 
 ## Course notes
 

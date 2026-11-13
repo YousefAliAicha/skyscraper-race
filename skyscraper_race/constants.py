@@ -2,6 +2,7 @@
 
 # --- Win condition ---
 TARGET_HEIGHT = 150  # meters to win
+WIN_HEIGHT = TARGET_HEIGHT  # alias used in some guide snippets
 
 # --- Roll ---
 ROLL_MIN = 10000
@@ -21,7 +22,10 @@ TIER_RANGES = {
     9: "strong",
 }
 
-# --- Challenges (phase 2 — can stay deferred for a thinner MVP) ---
+# Amount digit -> units scale (amount * UNITS_PER_AMOUNT)
+UNITS_PER_AMOUNT = 150
+
+# --- Challenges (phase 2 — optional for a thinner MVP) ---
 NUM_CHALLENGES = 4
 CHALLENGE_MIN_HEIGHT = 30
 CHALLENGE_MAX_HEIGHT = 140
@@ -36,10 +40,8 @@ BOARD_ROWS = 14
 BOARD_COLS = 10
 CELL_SIZE = 60
 
-# Player tower columns on the board
 P1_COLS = (0, 1, 2)
 P2_COLS = (7, 8, 9)
-# Visible floor slots: rows 2..12 (11 slots), ground visual at row 13
 TOWER_TOP_ROW = 2
 TOWER_BOTTOM_ROW = 12
 GROUND_ROW = 13

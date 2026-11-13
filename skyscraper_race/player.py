@@ -18,7 +18,7 @@ class Player:
         self.current_roll = None
 
     def tower_height(self) -> float:
-        return self.tower.total_height()
+        return self.tower.total_height
 
     def floor_count(self) -> int:
         return self.tower.size

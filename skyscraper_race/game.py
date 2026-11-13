@@ -7,20 +7,32 @@ from tower import Floor
 
 
 class Game:
-    def __init__(self, name1="Player 1", name2="Player 2"):
+    def __init__(self, name1="P1", name2="P2"):
         self.players = [Player(name1, ROLLS_PER_TURN), Player(name2, ROLLS_PER_TURN)]
         self.current_index = 0
         self.phase = "roll"  # roll | place | game_over
         self.winner = None
         self.last_collapse = None
-        self.message = f"{self.current_player().name}'s turn — press ROLL"
+        self.message = self._prompt_roll()
 
     def current_player(self):
         return self.players[self.current_index]
 
+    def side_hint(self):
+        return "LEFT" if self.current_index == 0 else "RIGHT"
+
+    def _prompt_roll(self):
+        p = self.current_player()
+        return (
+            f"{p.name}'s turn ({self.side_hint()}) — ROLL or press R "
+            f"[{p.rolls_remaining} rolls]"
+        )
+
     def roll(self):
+        if self.phase == "game_over":
+            raise RuntimeError("Game over")
         if self.phase != "roll":
-            raise RuntimeError(f"Cannot roll during {self.phase}")
+            raise RuntimeError("Already rolled — PLACE (Space/click) or SCRAP")
         p = self.current_player()
         if p.rolls_remaining <= 0:
             raise RuntimeError("No rolls left")
@@ -29,25 +41,26 @@ class Game:
         p.rolls_remaining -= 1
         self.phase = "place"
         self.message = (
-            f"{p.name} rolled {decoded['roll']}: {decoded['material_name']} "
-            f"{decoded['height']}m — place or SCRAP"
+            f"{p.name} got {decoded['material_name']} {decoded['height']}m "
+            f"(roll {decoded['roll']}) — click {self.side_hint()} tower, "
+            f"Space=top, or SCRAP"
         )
         return decoded
 
     def scrap_roll(self):
         if self.phase != "place" or not self.current_player().current_roll:
-            raise RuntimeError("No roll to scrap")
+            raise RuntimeError("Nothing to scrap — ROLL first")
         p = self.current_player()
         p.current_roll = None
         if p.rolls_remaining > 0:
             self.phase = "roll"
-            self.message = f"{p.name} scrapped — {p.rolls_remaining} left"
+            self.message = f"{p.name} scrapped. {self._prompt_roll()}"
         else:
             self.end_turn()
 
     def place_floor(self, position: int):
         if self.phase != "place" or not self.current_player().current_roll:
-            raise RuntimeError("No roll to place")
+            raise RuntimeError("ROLL first, then place")
         p = self.current_player()
         decoded = p.current_roll
         pos = max(0, min(position, p.tower.floor_count()))
@@ -62,12 +75,13 @@ class Game:
             self.last_collapse = (fallen, lost)
             collapsed = True
             self.message = (
-                f"{p.name} COLLAPSE — lost {len(fallen)} floors / {lost}m"
+                f"{p.name} COLLAPSE! lost {len(fallen)} floors / {lost:.0f}m "
+                f"(now {p.tower_height():.0f}m)"
             )
         else:
             self.message = (
-                f"{p.name} placed {decoded['material_name']} "
-                f"({decoded['height']}m) — tower {p.tower_height():.0f}m"
+                f"{p.name} +{decoded['material_name']} {decoded['height']}m "
+                f"@pos{pos} → {p.tower_height():.0f}m / {TARGET_HEIGHT}m"
             )
 
         if self.check_win():
@@ -75,10 +89,14 @@ class Game:
 
         if p.rolls_remaining > 0:
             self.phase = "roll"
-            self.message += f" — {p.rolls_remaining} left"
+            self.message += f" — ROLL again [{p.rolls_remaining} left]"
         else:
             self.end_turn()
         return {"collapsed": collapsed, "won": False}
+
+    def place_on_top(self):
+        """Most common move: append above current top."""
+        return self.place_floor(self.current_player().tower.floor_count())
 
     def check_win(self):
         p = self.current_player()
@@ -86,7 +104,7 @@ class Game:
             self.winner = p
             self.phase = "game_over"
             p.won = True
-            self.message = f"{p.name} wins at {p.tower_height():.1f}m!"
+            self.message = f"{p.name} WINS at {p.tower_height():.0f}m!"
             return True
         return False
 
@@ -94,7 +112,6 @@ class Game:
         if self.phase == "game_over":
             return
         self.current_index = 1 - self.current_index
-        p = self.current_player()
-        p.reset_rolls()
+        self.current_player().reset_rolls()
         self.phase = "roll"
-        self.message = f"{p.name}'s turn — press ROLL"
+        self.message = f"Turn over → {self._prompt_roll()}"

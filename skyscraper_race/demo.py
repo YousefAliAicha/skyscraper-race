@@ -1,37 +1,32 @@
-"""Console demo — auto-plays a short match (no GUI).
-
-    python demo.py
-"""
+"""Console demo — auto-plays a short match (no GUI).  python demo.py"""
 
 import random
 from game import Game
 
 
-def show(game):
-    print(f"\n--- {game.message}")
-    for i, p in enumerate(game.players):
-        mats = " | ".join(
+def show(g):
+    print(f"\n{g.message}")
+    for p in g.players:
+        stack = " | ".join(
             f"{f.material}:{f.height}m" for f in p.tower.floors_bottom_up()
-        ) or "(empty)"
-        print(f"  {p.name}: {p.tower_height():.0f}m  [{mats}]")
+        ) or "empty"
+        print(f"  {p.name}: {p.tower_height():.0f}m  [{stack}]")
 
 
 def main():
-    random.seed(42)  # reproducible demo
+    random.seed(7)
     g = Game("P1", "P2")
     show(g)
-    turns = 0
-    while g.phase != "game_over" and turns < 40:
-        turns += 1
+    for _ in range(36):
+        if g.phase == "game_over":
+            break
         if g.phase == "roll":
             g.roll()
             show(g)
-        # Always place on top for a clean climb demo
-        g.place_floor(g.current_player().tower.floor_count())
+        # Prefer strong-ish placements: always on top for climb demo
+        g.place_on_top()
         show(g)
-    print("\nDemo finished.")
-    if g.winner:
-        print(f"Winner: {g.winner.name}")
+    print("\nDone.", f"Winner: {g.winner.name}" if g.winner else "No winner yet.")
 
 
 if __name__ == "__main__":

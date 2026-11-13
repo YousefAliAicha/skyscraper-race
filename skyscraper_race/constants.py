@@ -2,7 +2,6 @@
 
 # --- Win condition ---
 TARGET_HEIGHT = 150  # meters to win
-WIN_HEIGHT = TARGET_HEIGHT  # alias used in some guide snippets
 
 # --- Roll ---
 ROLL_MIN = 10000

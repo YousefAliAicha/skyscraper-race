@@ -36,3 +36,7 @@ python main.py
 | `Esc` | Back to menu |
 
 **Tip:** steel/concrete at the **base**, junk on **top** (or scrap). First to 150 m wins.
+
+## Team / presentation
+
+See **[TEAM_GUIDE.md](TEAM_GUIDE.md)** — DSA cheat sheet, file ownership, Q&A practice, what we cut.

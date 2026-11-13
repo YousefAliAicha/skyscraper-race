@@ -91,12 +91,3 @@ def process_challenges(tower, heap):
         events.append(f"@{h}m {apply_challenge(tower, kind)}")
         triggered.append(h)
     return events, triggered
-
-
-def requeue_below(heap, all_heights, tower_height):
-    """After collapse: re-arm challenges the tower dropped below."""
-    armed = set(heap)
-    for h in all_heights:
-        if tower_height < h and h not in armed:
-            heapq.heappush(heap, h)
-            armed.add(h)

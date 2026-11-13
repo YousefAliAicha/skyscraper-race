@@ -1,7 +1,4 @@
-"""Material table — hash table (dict) lookup by (tier, band).
-
-DSA: Hash table for O(1) material property lookup on every roll.
-"""
+"""Material table — hash table lookup by (tier, low/high)."""
 
 from constants import TIER_RANGES, UNITS_PER_AMOUNT
 

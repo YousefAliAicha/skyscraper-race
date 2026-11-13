@@ -25,15 +25,19 @@ TIER_RANGES = {
 # Amount digit -> units scale (amount * UNITS_PER_AMOUNT)
 UNITS_PER_AMOUNT = 150
 
-# --- Challenges (phase 2 — optional for a thinner MVP) ---
-NUM_CHALLENGES = 4
-CHALLENGE_MIN_HEIGHT = 30
-CHALLENGE_MAX_HEIGHT = 140
-CHALLENGE_MIN_GAP = 15
+# Floor load capacity = capacity_mult * height * CAPACITY_CONSTANT * integrity
+# (build-guide Step 5). Without this, almost every 2-floor stack collapses.
+CAPACITY_CONSTANT = 1200
 
-EARTHQUAKE_DAMAGE = 0.10  # all floors
-WINDSTORM_DAMAGE = 0.15  # top 3 floors
-DRUNK_DRIVER_DAMAGE = 0.25  # ground floor
+# --- Challenges (phase 2 — optional for a thinner MVP) ---
+NUM_CHALLENGES = 3
+CHALLENGE_MIN_HEIGHT = 50
+CHALLENGE_MAX_HEIGHT = 130
+CHALLENGE_MIN_GAP = 25
+
+EARTHQUAKE_DAMAGE = 0.06  # all floors
+WINDSTORM_DAMAGE = 0.10  # top 3 floors
+DRUNK_DRIVER_DAMAGE = 0.15  # ground floor
 
 # --- Board layout (game2dboard) ---
 BOARD_ROWS = 14

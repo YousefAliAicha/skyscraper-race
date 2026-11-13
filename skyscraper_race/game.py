@@ -1,6 +1,6 @@
 """Turn loop: roll → place/scrap → challenges → stability → win."""
 
-from challenges import process_challenges, requeue_below
+from challenges import process_challenges
 from constants import ROLLS_PER_TURN, TARGET_HEIGHT
 from player import Player
 from roll import full_decode, generate_roll
@@ -45,9 +45,14 @@ class Game:
         p.current_roll = decoded
         p.rolls_remaining -= 1
         self.phase = "place"
+        tip = ""
+        if decoded["tier"] == "junk":
+            tip = " (junk — keep on TOP or SCRAP)"
+        elif decoded["tier"] == "strong":
+            tip = " (strong — good for BASE)"
         self.message = (
-            f"{p.name}: {decoded['material_name'].upper()} {decoded['height']}m  "
-            f"— Space=TOP · click {self.side_hint()} · S=scrap"
+            f"{p.name}: {decoded['material_name'].upper()} {decoded['height']}m"
+            f"{tip} — Space=TOP · S=scrap"
         )
         return decoded
 
@@ -90,10 +95,8 @@ class Game:
                 f"COLLAPSE -{len(self.last_collapse[0])}floors/"
                 f"{self.last_collapse[1]:.0f}m"
             )
-            if self.enable_challenges:
-                requeue_below(
-                    p.challenge_heap, p.challenge_heights, p.tower_height()
-                )
+            # Challenges stay cleared once triggered (no re-queue) so
+            # rebuilding after a collapse is possible.
 
         self.message = " · ".join(notes) + f" /{TARGET_HEIGHT}m"
 

@@ -1,5 +1,7 @@
 """Doubly linked-list tower: insert, recursive load, stack collapse."""
 
+from constants import CAPACITY_CONSTANT
+
 
 class Floor:
     def __init__(self, roll_data: dict):
@@ -26,7 +28,13 @@ class Floor:
 
     @property
     def capacity(self):
-        return self.capacity_mult * self.units * self.integrity
+        # Stronger bases (steel) hold more; taller floors have more structure.
+        return (
+            self.capacity_mult
+            * self.height
+            * CAPACITY_CONSTANT
+            * self.integrity
+        )
 
     def take_damage(self, percent: float):
         self.integrity = max(0.0, self.integrity * (1.0 - percent))

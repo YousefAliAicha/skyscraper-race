@@ -12,14 +12,16 @@ from tower import Floor, Tower
 
 
 def make_test_floor(name, height, weight, capacity):
+    from constants import CAPACITY_CONSTANT
     units = 100
+    # Invert: capacity = capacity_mult * height * CAPACITY_CONSTANT
     return Floor({
         "material_name": name,
         "tier": "test",
         "height": height,
         "units": units,
         "weight_per_unit": weight / units,
-        "capacity_mult": capacity / units,
+        "capacity_mult": capacity / (height * CAPACITY_CONSTANT),
         "image": name,
     })
 
@@ -51,10 +53,13 @@ def test_roll():
 
 
 def test_floor():
-    f = Floor(full_decode(47382))
-    assert f.total_weight == 1050 and f.capacity == 1050
+    from constants import CAPACITY_CONSTANT
+    f = Floor(full_decode(47382))  # wood, h=10, units=1050
+    assert f.total_weight == 1050
+    assert f.capacity == 1.0 * 10 * CAPACITY_CONSTANT
     f.take_damage(0.1)
     assert abs(f.integrity - 0.9) < 1e-9
+    assert abs(f.capacity - 0.9 * 10 * CAPACITY_CONSTANT) < 1e-9
 
 
 def test_tower():
@@ -83,12 +88,16 @@ def test_stability_collapse():
 
 
 def test_challenges():
+    from constants import (
+        CHALLENGE_MAX_HEIGHT, CHALLENGE_MIN_GAP,
+        CHALLENGE_MIN_HEIGHT, NUM_CHALLENGES,
+    )
     hs = generate_challenge_heights()
-    assert len(hs) == 4
-    assert all(30 <= h <= 140 for h in hs)
+    assert len(hs) == NUM_CHALLENGES
+    assert all(CHALLENGE_MIN_HEIGHT <= h <= CHALLENGE_MAX_HEIGHT for h in hs)
     for i in range(len(hs)):
         for j in range(i + 1, len(hs)):
-            assert abs(hs[i] - hs[j]) >= 15
+            assert abs(hs[i] - hs[j]) >= CHALLENGE_MIN_GAP
 
     t = Tower()
     t.insert_at(0, make_test_floor("A", 20, 100, 5000))

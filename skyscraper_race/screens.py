@@ -1,23 +1,22 @@
-"""Fullscreen title cards: main menu, how-to-play, win / collapse splash."""
+"""Simple fullscreen screens: splash, menu, how-to, win."""
 
 import tkinter as tk
 from tkinter import font as tkfont
 
-BG = "#0b1020"
-FG = "#e8eef8"
-ACCENT = "#3dd68c"
-ACCENT2 = "#f0b429"
-DANGER = "#e85d5d"
-MUTED = "#8b9bb4"
+BG = "#111318"
+FG = "#f2f2f2"
+DIM = "#a0a4ae"
+GREEN = "#6bcb8b"
+RED = "#e07070"
+BTN = "#2a2e38"
 
 
-def _fonts(root):
+def _fonts():
     return {
-        "hero": tkfont.Font(family="DejaVu Sans", size=42, weight="bold"),
-        "title": tkfont.Font(family="DejaVu Sans", size=28, weight="bold"),
-        "sub": tkfont.Font(family="DejaVu Sans", size=16),
+        "hero": tkfont.Font(family="DejaVu Sans", size=36, weight="bold"),
+        "title": tkfont.Font(family="DejaVu Sans", size=22, weight="bold"),
         "body": tkfont.Font(family="DejaVu Sans", size=14),
-        "btn": tkfont.Font(family="DejaVu Sans", size=16, weight="bold"),
+        "btn": tkfont.Font(family="DejaVu Sans", size=14, weight="bold"),
     }
 
 
@@ -26,125 +25,92 @@ def _clear(root):
         w.destroy()
 
 
-def _button(parent, text, command, fonts, fill=ACCENT, fg="#0b1020"):
-    btn = tk.Button(
+def _btn(parent, text, command, fonts, bg=GREEN, fg="#111318"):
+    return tk.Button(
         parent,
         text=text,
         command=command,
         font=fonts["btn"],
-        bg=fill,
+        bg=bg,
         fg=fg,
-        activebackground=fg,
-        activeforeground=fill,
+        activebackground=FG,
+        activeforeground=BG,
         relief="flat",
-        padx=28,
-        pady=14,
+        padx=24,
+        pady=12,
         cursor="hand2",
-        borderwidth=0,
     )
-    return btn
 
 
 def show_main_menu(root, on_play, on_howto, on_quit):
     _clear(root)
     root.configure(bg=BG)
-    fonts = _fonts(root)
-
+    fonts = _fonts()
     wrap = tk.Frame(root, bg=BG)
     wrap.place(relx=0.5, rely=0.5, anchor="center")
 
-    tk.Label(wrap, text="SKYSCRAPER", font=fonts["hero"], bg=BG, fg=FG).pack()
-    tk.Label(wrap, text="RACE", font=fonts["hero"], bg=BG, fg=ACCENT).pack()
+    tk.Label(wrap, text="Skyscraper Race", font=fonts["hero"], bg=BG, fg=FG).pack()
     tk.Label(
-        wrap,
-        text="First to 150 m  ·  Build smart or collapse",
-        font=fonts["sub"],
-        bg=BG,
-        fg=MUTED,
-    ).pack(pady=(8, 36))
+        wrap, text="First to 150 m wins", font=fonts["body"], bg=BG, fg=DIM
+    ).pack(pady=(8, 28))
 
-    _button(wrap, "PLAY", on_play, fonts).pack(fill="x", pady=6)
-    _button(wrap, "HOW TO PLAY", on_howto, fonts, fill="#243044", fg=FG).pack(
-        fill="x", pady=6
-    )
-    _button(wrap, "QUIT", on_quit, fonts, fill=DANGER, fg=FG).pack(fill="x", pady=6)
-
-    tk.Label(
-        wrap,
-        text="Arrow keys move the place cursor  ·  Enter confirms",
-        font=fonts["body"],
-        bg=BG,
-        fg=MUTED,
-    ).pack(pady=(28, 0))
+    _btn(wrap, "Play", on_play, fonts).pack(fill="x", pady=5)
+    _btn(wrap, "How to play", on_howto, fonts, bg=BTN, fg=FG).pack(fill="x", pady=5)
+    _btn(wrap, "Quit", on_quit, fonts, bg=RED, fg=FG).pack(fill="x", pady=5)
 
 
 def show_howto(root, on_back):
     _clear(root)
     root.configure(bg=BG)
-    fonts = _fonts(root)
+    fonts = _fonts()
     wrap = tk.Frame(root, bg=BG)
     wrap.place(relx=0.5, rely=0.5, anchor="center")
 
-    tk.Label(wrap, text="HOW TO PLAY", font=fonts["title"], bg=BG, fg=ACCENT2).pack(
-        pady=(0, 20)
+    tk.Label(wrap, text="How to play", font=fonts["title"], bg=BG, fg=FG).pack(
+        pady=(0, 16)
     )
-
-    lines = [
-        "1. ROLL (or press R) to get a floor material",
-        "2. Move the green ARROW with ↑ / ↓ to choose height",
-        "3. Press ENTER or SPACE to place at the arrow",
-        "4. SCRAP (S) discards a bad roll",
-        "5. Strong materials (steel/concrete) belong at the BASE",
-        "6. Junk belongs on TOP — or scrap it",
-        "7. Challenges hit as you climb — keep the tower stable",
-        "8. First tower to 150 m wins",
+    steps = [
+        "1. Press R to roll a floor",
+        "2. Move the green arrow with ↑ and ↓",
+        "3. Press Enter to place it there",
+        "4. Press S to scrap a bad roll",
+        "5. Put strong materials at the bottom",
+        "6. Put junk on top (or scrap it)",
+        "7. First to 150 m wins",
     ]
-    for line in lines:
-        tk.Label(wrap, text=line, font=fonts["body"], bg=BG, fg=FG, anchor="w").pack(
-            fill="x", pady=4
+    for s in steps:
+        tk.Label(wrap, text=s, font=fonts["body"], bg=BG, fg=FG, anchor="w").pack(
+            fill="x", pady=3
         )
+    _btn(wrap, "Back", on_back, fonts, bg=BTN, fg=FG).pack(pady=(24, 0))
 
-    _button(wrap, "BACK", on_back, fonts, fill="#243044", fg=FG).pack(pady=(28, 0))
 
-
-def show_title_card(root, title, subtitle, detail, on_continue, btn="CONTINUE", color=ACCENT):
+def show_title_card(root, title, subtitle, detail, on_continue, btn="Continue", color=GREEN):
     _clear(root)
     root.configure(bg=BG)
-    fonts = _fonts(root)
+    fonts = _fonts()
     wrap = tk.Frame(root, bg=BG)
     wrap.place(relx=0.5, rely=0.5, anchor="center")
-
-    tk.Label(wrap, text=title, font=fonts["hero"], bg=BG, fg=color).pack()
-    tk.Label(wrap, text=subtitle, font=fonts["title"], bg=BG, fg=FG).pack(pady=(12, 8))
+    tk.Label(wrap, text=title, font=fonts["hero"], bg=BG, fg=FG).pack()
+    tk.Label(wrap, text=subtitle, font=fonts["title"], bg=BG, fg=color).pack(pady=(10, 6))
     if detail:
-        tk.Label(wrap, text=detail, font=fonts["sub"], bg=BG, fg=MUTED).pack(pady=(0, 28))
-    _button(wrap, btn, on_continue, fonts, fill=color, fg="#0b1020").pack()
+        tk.Label(wrap, text=detail, font=fonts["body"], bg=BG, fg=DIM).pack(pady=(0, 24))
+    _btn(wrap, btn, on_continue, fonts, bg=color).pack()
 
 
 def show_win_card(root, winner_name, height, on_again, on_menu):
     _clear(root)
     root.configure(bg=BG)
-    fonts = _fonts(root)
+    fonts = _fonts()
     wrap = tk.Frame(root, bg=BG)
     wrap.place(relx=0.5, rely=0.5, anchor="center")
-
-    tk.Label(wrap, text="VICTORY", font=fonts["hero"], bg=BG, fg=ACCENT).pack()
+    tk.Label(wrap, text="Winner", font=fonts["hero"], bg=BG, fg=GREEN).pack()
     tk.Label(
         wrap,
-        text=f"{winner_name} reaches {height:.0f} m",
+        text=f"{winner_name} — {height:.0f} m",
         font=fonts["title"],
         bg=BG,
         fg=FG,
-    ).pack(pady=(16, 8))
-    tk.Label(
-        wrap,
-        text="The skyscraper stands.",
-        font=fonts["sub"],
-        bg=BG,
-        fg=MUTED,
-    ).pack(pady=(0, 32))
-
-    _button(wrap, "PLAY AGAIN", on_again, fonts).pack(fill="x", pady=6)
-    _button(wrap, "MAIN MENU", on_menu, fonts, fill="#243044", fg=FG).pack(
-        fill="x", pady=6
-    )
+    ).pack(pady=(12, 28))
+    _btn(wrap, "Play again", on_again, fonts).pack(fill="x", pady=5)
+    _btn(wrap, "Main menu", on_menu, fonts, bg=BTN, fg=FG).pack(fill="x", pady=5)

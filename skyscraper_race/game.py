@@ -56,14 +56,16 @@ class Game:
         p.current_roll = decoded
         p.rolls_remaining -= 1
         self.phase = "place"
-        tip = "Keep on TOP or scrap" if decoded["tier"] == "junk" else (
-            "Good for the BASE" if decoded["tier"] == "strong" else "Place with ↑↓"
-        )
+        tip = {
+            "junk": "Weak — put on top or scrap",
+            "strong": "Strong — good at the bottom",
+            "common": "Use ↑↓ then Enter to place",
+        }[decoded["tier"]]
         self.message = f"Rolled {decoded['material_name']} {decoded['height']}m"
         self._set_feed(
-            f"Rolled {decoded['material_name'].upper()}",
-            f"{decoded['height']} m tall  ·  {tip}",
-            result="Choose height with ↑↓",
+            f"Rolled {decoded['material_name']}",
+            f"{decoded['height']} m — {tip}",
+            result="Move arrow, then Enter",
             result_ok=True,
         )
         return decoded
@@ -101,18 +103,18 @@ class Game:
         if collapsed:
             fallen, lost = self.last_collapse
             self._set_feed(
-                f"Placed {decoded['material_name'].upper()} {decoded['height']}m",
-                f"Slot {pos}  ·  tower now {height:.0f} m",
-                result=f"COLLAPSE  −{len(fallen)} floors  (−{lost:.0f} m)",
+                f"Placed {decoded['material_name']} ({decoded['height']} m)",
+                f"At slot {pos}. Tower is now {height:.0f} m.",
+                result=f"Collapsed — lost {len(fallen)} floors ({lost:.0f} m)",
                 result_ok=False,
                 events=events,
             )
             self.message = f"Collapse! tower {height:.0f}m"
         else:
             self._set_feed(
-                f"Placed {decoded['material_name'].upper()} {decoded['height']}m",
-                f"Slot {pos}  ·  tower now {height:.0f} m",
-                result="Stable",
+                f"Placed {decoded['material_name']} ({decoded['height']} m)",
+                f"At slot {pos}. Tower is now {height:.0f} m.",
+                result="Holding — still stable",
                 result_ok=True,
                 events=events,
             )

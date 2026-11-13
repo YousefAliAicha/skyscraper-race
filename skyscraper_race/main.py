@@ -1,12 +1,6 @@
-"""Skyscraper Race Lite — fullscreen game with left info panel + place arrow.
+"""Skyscraper Race Lite — simple fullscreen UI + place arrow.
 
-Controls:
-  R            roll
-  S            scrap
-  ↑ / ↓        move place arrow
-  Enter/Space  place at arrow
-  click tower  move arrow
-  Esc          menu
+Controls: R roll · ↑↓ move arrow · Enter place · S scrap · Esc menu
 """
 
 import tkinter as tk
@@ -22,16 +16,13 @@ from constants import (
 )
 from game import Game
 
-BG = "#0b1020"
-PANEL = "#121a2c"
-CARD = "#182338"
-FG = "#e8eef8"
-MUTED = "#8b9bb4"
-ACCENT = "#3dd68c"
-WARN = "#f0b429"
-DANGER = "#e85d5d"
-P1C = "#4d9fff"
-P2C = "#f0a05a"
+BG = "#111318"
+PANEL = "#171a21"
+FG = "#f2f2f2"
+DIM = "#a0a4ae"
+GREEN = "#6bcb8b"
+RED = "#e07070"
+LINE = "#2a2e38"
 
 
 def run_menu():
@@ -51,33 +42,21 @@ def run_menu():
         root.destroy()
 
     def go_howto():
-        screens.show_howto(root, lambda: screens.show_main_menu(
-            root, go_play, go_howto, go_quit
-        ))
-
-    def after_splash():
-        screens.show_main_menu(root, go_play, go_howto, go_quit)
+        screens.show_howto(
+            root, lambda: screens.show_main_menu(root, go_play, go_howto, go_quit)
+        )
 
     screens.show_title_card(
         root,
         "SKYSCRAPER RACE",
-        "Lite Edition",
-        "A DSA board game  ·  Linked lists, heaps, recursion",
-        after_splash,
-        btn="PRESS START",
-        color=ACCENT,
+        "Build to 150 meters",
+        "Strong base. Light top. Don't collapse.",
+        lambda: screens.show_main_menu(root, go_play, go_howto, go_quit),
+        btn="START",
+        color=GREEN,
     )
     root.mainloop()
     return result["action"]
-
-
-def _section(parent, title, fonts):
-    box = tk.Frame(parent, bg=CARD, padx=14, pady=12)
-    box.pack(fill="x", pady=(0, 12))
-    tk.Label(
-        box, text=title.upper(), font=fonts["label"], bg=CARD, fg=MUTED, anchor="w"
-    ).pack(fill="x", pady=(0, 6))
-    return box
 
 
 def run_match():
@@ -85,36 +64,20 @@ def run_match():
     game = Game("P1", "P2")
     board = Board(BOARD_ROWS, BOARD_COLS)
     board.cell_size = CELL_SIZE
-    board.title = "Skyscraper Race Lite"
-    board.margin = 10
-    board.cell_spacing = 3
+    board.title = "Skyscraper Race"
+    board.margin = 8
+    board.cell_spacing = 2
     board.margin_color = BG
-    board.cell_color = "#101a2b"
-    board.grid_color = "#18253a"
+    board.cell_color = "#1c2030"
+    board.grid_color = "#2a3144"
     board.background_image = "bg"
 
     ui = {
         "cursor": 0,
         "result": "menu",
         "ended": False,
-        # sidebar labels
-        "turn": None,
-        "phase": None,
-        "headline": None,
-        "detail": None,
-        "outcome": None,
-        "events": None,
-        "p1_h": None,
-        "p2_h": None,
-        "p1_bar": None,
-        "p2_bar": None,
-        "rolls": None,
-        "challenge": None,
-        "slot": None,
-        "bar_w": 200,
+        "info": None,  # one Text widget for the whole sidebar
     }
-
-    fonts = {}
 
     def clamp_cursor():
         n = game.current_player().tower.floor_count()
@@ -123,62 +86,59 @@ def run_match():
     def reset_cursor_to_top():
         ui["cursor"] = game.current_player().tower.floor_count()
 
-    def progress_fill(bar, ratio, color):
-        bar.delete("all")
-        w = ui["bar_w"]
-        h = 14
-        bar.create_rectangle(0, 0, w, h, fill="#0d1422", outline="#2a3a55")
-        fill = max(0, min(w, int(w * ratio)))
-        if fill:
-            bar.create_rectangle(1, 1, fill, h - 1, fill=color, outline="")
-
-    def refresh_sidebar():
+    def sidebar_text():
         p1, p2 = game.players
         cur = game.current_player()
-        feed = game.feed
-
-        ui["turn"].configure(text=f"{cur.name}  ·  {game.side_hint()} tower")
-        phase_txt = {
-            "roll": "Your move: ROLL",
-            "place": "Your move: PLACE",
-            "game_over": "Match over",
-        }[game.phase]
-        ui["phase"].configure(
-            text=phase_txt,
-            fg=ACCENT if game.phase != "game_over" else MUTED,
-        )
-
-        ui["headline"].configure(text=feed["headline"])
-        ui["detail"].configure(text=feed["detail"])
-        ui["outcome"].configure(
-            text=feed["result"],
-            fg=ACCENT if feed["result_ok"] else DANGER,
-        )
-        ev = feed.get("events") or []
-        ui["events"].configure(
-            text="\n".join(ev) if ev else "No challenge this action",
-            fg=WARN if ev else MUTED,
-        )
-
-        ui["p1_h"].configure(text=f"{p1.tower_height():.0f} m")
-        ui["p2_h"].configure(text=f"{p2.tower_height():.0f} m")
-        progress_fill(ui["p1_bar"], p1.tower_height() / TARGET_HEIGHT, P1C)
-        progress_fill(ui["p2_bar"], p2.tower_height() / TARGET_HEIGHT, P2C)
-
-        ui["rolls"].configure(text=f"{cur.rolls_remaining} left this turn")
+        f = game.feed
         nxt = cur.next_challenge()
-        ui["challenge"].configure(
-            text=f"At {nxt} m" if nxt else "None remaining",
-            fg=DANGER if nxt else MUTED,
-        )
+        phase = {
+            "roll": "Roll a floor (R)",
+            "place": f"Place at slot {ui['cursor']}  (↑↓ then Enter)",
+            "game_over": "Game over",
+        }[game.phase]
 
-        if game.phase == "place":
-            ui["slot"].configure(
-                text=f"Arrow → slot {ui['cursor']}\n↑↓ move  ·  Enter place",
-                fg=ACCENT,
-            )
-        else:
-            ui["slot"].configure(text="Press R to roll", fg=MUTED)
+        lines = [
+            "SKYSCRAPER RACE",
+            "",
+            f"Turn:  {cur.name} ({game.side_hint()})",
+            f"Do:    {phase}",
+            f"Rolls: {cur.rolls_remaining} left",
+            "",
+            "——— last action ———",
+            f["headline"],
+            f["detail"],
+            "",
+            "——— result ———",
+            f["result"],
+        ]
+        if f.get("events"):
+            lines.append("")
+            lines.append("——— challenge ———")
+            lines.extend(f["events"])
+        lines += [
+            "",
+            "——— height ———",
+            f"P1   {p1.tower_height():.0f} / {TARGET_HEIGHT} m",
+            f"P2   {p2.tower_height():.0f} / {TARGET_HEIGHT} m",
+            "",
+            "——— next challenge ———",
+            f"{nxt} m" if nxt else "None left",
+            "",
+            "R roll   S scrap",
+            "↑↓ arrow   Enter place",
+            "Esc menu",
+        ]
+        return "\n".join(lines)
+
+    def refresh_sidebar():
+        if ui["info"] is None:
+            return
+        color = FG
+        if not game.feed.get("result_ok", True):
+            color = RED
+        elif game.phase == "place":
+            color = FG
+        ui["info"].configure(text=sidebar_text(), fg=color)
 
     def status_for(player, floor):
         r = player.tower.safety_ratio(floor)
@@ -216,21 +176,18 @@ def run_match():
         clear()
         p1, p2 = game.players
         board[0][0] = "badge_p1"
-        board[0][1] = assets.height_chip(int(p1.tower_height()), (80, 140, 220))
+        board[0][1] = assets.height_chip(int(p1.tower_height()), (90, 140, 200))
         board[0][4] = "badge_goal"
         board[0][7] = "badge_p2"
-        board[0][8] = assets.height_chip(int(p2.tower_height()), (220, 140, 70))
+        board[0][8] = assets.height_chip(int(p2.tower_height()), (200, 140, 80))
         board[1][4] = "btn_roll"
         board[1][5] = "btn_scrap"
-        if game.current_index == 0:
-            board[1][0] = "badge_you"
-        else:
-            board[1][9] = "badge_you"
+        board[1][0 if game.current_index == 0 else 9] = "badge_you"
 
         cur = game.current_player()
         if cur.next_challenge():
             board[1][3] = "challenge"
-            board[1][6] = assets.height_chip(int(cur.next_challenge()), (200, 70, 70))
+            board[1][6] = assets.height_chip(int(cur.next_challenge()), (180, 70, 70))
         pending = cur.current_roll
         if pending and game.phase == "place":
             board[1][7] = assets.floor_image(
@@ -247,10 +204,10 @@ def run_match():
             return
         ui["ended"] = True
         winner = game.winner
-        height = winner.tower_height() if winner else 0
         name = winner.name if winner else "?"
+        height = winner.tower_height() if winner else 0
 
-        def close_board_and(action):
+        def close(action):
             ui["result"] = action
             board._root.destroy()
 
@@ -258,11 +215,9 @@ def run_match():
         for w in root.winfo_children():
             w.destroy()
         screens.show_win_card(
-            root,
-            name,
-            height,
-            on_again=lambda: close_board_and("play"),
-            on_menu=lambda: close_board_and("menu"),
+            root, name, height,
+            on_again=lambda: close("play"),
+            on_menu=lambda: close("menu"),
         )
 
     def after_action():
@@ -277,7 +232,7 @@ def run_match():
         n = game.current_player().tower.floor_count()
         return n if idx >= n else idx
 
-    def flash_error(msg):
+    def flash(msg):
         game.feed["result"] = msg
         game.feed["result_ok"] = False
         refresh_sidebar()
@@ -296,7 +251,7 @@ def run_match():
                 cols = P1_COLS if game.current_index == 0 else P2_COLS
                 other = P2_COLS if game.current_index == 0 else P1_COLS
                 if col in other:
-                    flash_error(f"Use the {game.side_hint()} tower")
+                    flash(f"Use the {game.side_hint()} tower")
                     return
                 if col in cols:
                     pos = row_to_pos(row)
@@ -307,7 +262,7 @@ def run_match():
                     return
             after_action()
         except RuntimeError as e:
-            flash_error(str(e))
+            flash(str(e))
 
     def on_key(key):
         if game.phase == "game_over":
@@ -338,12 +293,12 @@ def run_match():
                     clamp_cursor()
                     game.place_floor(ui["cursor"])
                     reset_cursor_to_top()
-                elif game.phase == "roll":
-                    flash_error("Roll first (R)")
+                else:
+                    flash("Roll first (R)")
                     return
             after_action()
         except RuntimeError as e:
-            flash_error(str(e))
+            flash(str(e))
 
     def on_start():
         root = board._root
@@ -353,106 +308,33 @@ def run_match():
             root.geometry("1280x900")
         root.configure(bg=BG)
 
-        fonts["title"] = tkfont.Font(family="DejaVu Sans", size=18, weight="bold")
-        fonts["label"] = tkfont.Font(family="DejaVu Sans", size=10, weight="bold")
-        fonts["body"] = tkfont.Font(family="DejaVu Sans", size=14)
-        fonts["big"] = tkfont.Font(family="DejaVu Sans", size=20, weight="bold")
-        fonts["huge"] = tkfont.Font(family="DejaVu Sans", size=26, weight="bold")
-        fonts["small"] = tkfont.Font(family="DejaVu Sans", size=11)
-
+        # Detach canvas, then pack: sidebar | board (siblings under root)
         board._canvas.pack_forget()
 
-        # --- body: left sidebar + board ---
-        body = tk.Frame(root, bg=BG)
-        body.pack(side="top", fill="both", expand=True)
-
-        side = tk.Frame(body, bg=PANEL, width=320, padx=18, pady=18)
+        side = tk.Frame(root, bg=PANEL, width=300, padx=20, pady=24)
         side.pack(side="left", fill="y")
         side.pack_propagate(False)
 
-        tk.Label(
-            side, text="SKYSCRAPER", font=fonts["title"], bg=PANEL, fg=ACCENT
-        ).pack(anchor="w")
-        tk.Label(
-            side, text="RACE", font=fonts["title"], bg=PANEL, fg=FG
-        ).pack(anchor="w", pady=(0, 16))
-
-        # Turn
-        box = _section(side, "Now playing", fonts)
-        ui["turn"] = tk.Label(box, text="", font=fonts["big"], bg=CARD, fg=FG, anchor="w")
-        ui["turn"].pack(fill="x")
-        ui["phase"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=ACCENT, anchor="w")
-        ui["phase"].pack(fill="x", pady=(4, 0))
-
-        # Last action
-        box = _section(side, "Last action", fonts)
-        ui["headline"] = tk.Label(
-            box, text="", font=fonts["big"], bg=CARD, fg=FG, anchor="w", wraplength=260, justify="left"
-        )
-        ui["headline"].pack(fill="x")
-        ui["detail"] = tk.Label(
-            box, text="", font=fonts["body"], bg=CARD, fg=MUTED, anchor="w", wraplength=260, justify="left"
-        )
-        ui["detail"].pack(fill="x", pady=(4, 0))
-
-        # Outcome
-        box = _section(side, "Result", fonts)
-        ui["outcome"] = tk.Label(
-            box, text="", font=fonts["big"], bg=CARD, fg=ACCENT, anchor="w", wraplength=260, justify="left"
-        )
-        ui["outcome"].pack(fill="x")
-        ui["events"] = tk.Label(
-            box, text="", font=fonts["small"], bg=CARD, fg=MUTED, anchor="w", wraplength=260, justify="left"
-        )
-        ui["events"].pack(fill="x", pady=(6, 0))
-
-        # Heights
-        box = _section(side, f"Height  /  {TARGET_HEIGHT} m", fonts)
-        row1 = tk.Frame(box, bg=CARD)
-        row1.pack(fill="x")
-        tk.Label(row1, text="P1", font=fonts["body"], bg=CARD, fg=P1C).pack(side="left")
-        ui["p1_h"] = tk.Label(row1, text="0 m", font=fonts["body"], bg=CARD, fg=FG)
-        ui["p1_h"].pack(side="right")
-        ui["p1_bar"] = tk.Canvas(box, width=ui["bar_w"], height=14, bg=CARD, highlightthickness=0)
-        ui["p1_bar"].pack(fill="x", pady=(4, 10))
-
-        row2 = tk.Frame(box, bg=CARD)
-        row2.pack(fill="x")
-        tk.Label(row2, text="P2", font=fonts["body"], bg=CARD, fg=P2C).pack(side="left")
-        ui["p2_h"] = tk.Label(row2, text="0 m", font=fonts["body"], bg=CARD, fg=FG)
-        ui["p2_h"].pack(side="right")
-        ui["p2_bar"] = tk.Canvas(box, width=ui["bar_w"], height=14, bg=CARD, highlightthickness=0)
-        ui["p2_bar"].pack(fill="x", pady=(4, 0))
-
-        # Rolls + challenge
-        box = _section(side, "Rolls", fonts)
-        ui["rolls"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=FG, anchor="w")
-        ui["rolls"].pack(fill="x")
-
-        box = _section(side, "Next challenge", fonts)
-        ui["challenge"] = tk.Label(box, text="", font=fonts["body"], bg=CARD, fg=DANGER, anchor="w")
-        ui["challenge"].pack(fill="x")
-
-        # Placement
-        box = _section(side, "Placement", fonts)
-        ui["slot"] = tk.Label(
-            box, text="", font=fonts["body"], bg=CARD, fg=ACCENT, anchor="w", justify="left"
-        )
-        ui["slot"].pack(fill="x")
-
-        tk.Label(
+        mono = tkfont.Font(family="DejaVu Sans Mono", size=12)
+        ui["info"] = tk.Label(
             side,
-            text="R roll · S scrap · Esc menu",
-            font=fonts["small"],
+            text="",
+            font=mono,
             bg=PANEL,
-            fg=MUTED,
-        ).pack(side="bottom", anchor="w", pady=(12, 0))
+            fg=FG,
+            justify="left",
+            anchor="nw",
+        )
+        ui["info"].pack(fill="both", expand=True)
 
-        # Board on the right
-        board_wrap = tk.Frame(body, bg=BG)
-        board_wrap.pack(side="left", fill="both", expand=True)
-        board._canvas.pack(in_=board_wrap, expand=True)
+        # Thin divider
+        tk.Frame(root, bg=LINE, width=1).pack(side="left", fill="y")
 
+        # Pack the game2dboard canvas next to the sidebar (same parent = root)
+        board._canvas.configure(bg=BG, highlightthickness=0)
+        board._canvas.pack(side="left", padx=24, pady=24)
+
+        root.update_idletasks()
         draw()
 
     board.on_start = on_start

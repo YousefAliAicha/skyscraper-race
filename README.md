@@ -11,6 +11,8 @@ This project is also a DSA showcase: six structures/algorithms are used because 
 
 ## Install
 
+### All platforms (venv + packages)
+
 ```bash
 git clone https://github.com/YousefAliAicha/skyscraper-race.git
 cd skyscraper-race
@@ -19,10 +21,50 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-On Ubuntu/Debian you also need Tk:
+Check that Tk works (needed only for the desktop GUI):
+
+```bash
+python3 -c "import tkinter; print('tk ok', tkinter.TkVersion)"
+```
+
+If that prints `tk ok`, skip the OS notes below.
+
+### macOS
+
+1. Install a real Python 3 (not only Xcode’s stub):
+   - **Homebrew (recommended):**
+     ```bash
+     brew install python
+     ```
+   - Or download the installer from [python.org](https://www.python.org/downloads/macos/) (includes Tk).
+2. Recreate the venv with that Python so the game uses it:
+   ```bash
+   /opt/homebrew/bin/python3 -m venv .venv   # Apple Silicon
+   # Intel Macs often use: /usr/local/bin/python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. If `import tkinter` still fails:
+   ```bash
+   brew install python-tk
+   ```
+   Then make a **new** venv again (step 2) so it picks up Tk.
+4. From a Terminal (not a headless SSH session), run `python main.py` inside `skyscraper_race/`.
+
+The Jupyter notebook does **not** need Tk — only `notebook` / Colab.
+
+### Ubuntu / Debian
 
 ```bash
 sudo apt install python3-tk
+```
+
+### Windows
+
+Use `python` from [python.org](https://www.python.org/downloads/windows/) and tick **tcl/tk** during setup. Activate with:
+
+```bat
+.venv\Scripts\activate
 ```
 
 ## Run

@@ -1,4 +1,7 @@
-"""Headless tests — run: python test_core.py"""
+"""Headless tests — run: python test_core.py
+
+Each test covers one module. Read them top-to-bottom to learn the API.
+"""
 
 from challenges import (
     find_floor_at_height,

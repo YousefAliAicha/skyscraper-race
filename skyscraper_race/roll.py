@@ -1,6 +1,13 @@
-"""5-digit roll → tier / amount / material / height."""
+"""Roll a 5-digit number and decode it into a floor recipe.
+
+  digit 1 → tier (junk / common / strong)
+  digit 2 → amount (0 counts as 10)
+  digit 3 → which material inside the tier
+  digits 4+5 → height in meters (minimum 2)
+"""
 
 import random
+
 from constants import ROLL_MAX, ROLL_MIN
 from materials import calculate_units, get_material, tier_for_digit
 
@@ -10,10 +17,12 @@ def generate_roll() -> int:
 
 
 def decode_roll(roll: int) -> dict:
-    s = str(roll)
-    if len(s) != 5:
-        raise ValueError(f"need 5 digits, got {roll}")
-    d1, d2, d3, d4, d5 = (int(c) for c in s)
+    """Split a 5-digit roll into tier / amount / material digit / height."""
+    text = str(roll)
+    if len(text) != 5:
+        raise ValueError(f"roll must be 5 digits, got {roll}")
+
+    d1, d2, d3, d4, d5 = (int(ch) for ch in text)
     return {
         "roll": roll,
         "tier": tier_for_digit(d1),
@@ -24,6 +33,7 @@ def decode_roll(roll: int) -> dict:
 
 
 def full_decode(roll: int) -> dict:
+    """Decode the roll and attach material stats ready for Floor(...)."""
     base = decode_roll(roll)
     mat = get_material(base["tier"], base["material_digit"])
     units = calculate_units(base["amount"])

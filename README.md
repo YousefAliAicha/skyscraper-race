@@ -31,8 +31,25 @@ sudo apt install python3-tk
 cd skyscraper_race
 python test_core.py   # unit tests (no window)
 python demo.py        # console autoplay (no window)
-python main.py        # full game
+python main.py        # full game (needs Tk + game2dboard)
 ```
+
+### Playable Jupyter notebook (one file)
+
+Download **[`Skyscraper_Race_Play.ipynb`](Skyscraper_Race_Play.ipynb)** alone — it embeds the whole game + all 6 DSAs. No other project files required.
+
+```bash
+pip install notebook          # or: pip install jupyterlab
+jupyter notebook Skyscraper_Race_Play.ipynb
+```
+
+Or open the file in VS Code / Google Colab → **Run all**.
+
+- **Auto demo** cell plays by itself (no typing).
+- Uncomment `play()` for keyboard turns (`r` / `p` / `i N` / `s`).
+- Optional: `pip install ipywidgets` then uncomment `play_widgets()` for buttons.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YousefAliAicha/skyscraper-race/blob/main/Skyscraper_Race_Play.ipynb)
 
 ---
 
@@ -162,6 +179,7 @@ Heights are spaced (`CHALLENGE_MIN_GAP`) so you do not get three disasters in th
 ## Project layout
 
 ```
+Skyscraper_Race_Play.ipynb   self-contained playable notebook
 skyscraper_race/
   constants.py    all balance numbers in one place
   materials.py    material dict (hash table)

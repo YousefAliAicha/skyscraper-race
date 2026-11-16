@@ -1,65 +1,17 @@
-"""Tower as a doubly linked list of Floor nodes.
+"""Tower = linked list of Floor nodes.
 
-DSA used here:
-  Linked list  — insert / remove a floor at any height
-  Recursion    — load_above() walks upward adding weight
-  Linear scan  — find_weakest_floor()
-  Stack        — collapse() removes failed floor + everything above (LIFO)
+DSA used here (3 of the 6):
+  Linked list — insert / remove a floor at any height
+  Recursion   — load_above() walks upward adding weight
+  Stack       — collapse() removes a failed floor + everything above
 """
 
-from constants import CAPACITY_CONSTANT
-
-
-class Floor:
-    """One floor = one linked-list node (pointers: above / below)."""
-
-    def __init__(self, roll_data: dict):
-        self.material_name = roll_data["material_name"]
-        self.tier = roll_data["tier"]
-        self.height = roll_data["height"]
-        self.units = roll_data["units"]
-        self.weight_per_unit = roll_data["weight_per_unit"]
-        self.capacity_mult = roll_data["capacity_mult"]
-        self.image = roll_data.get("image", self.material_name)
-        self.integrity = 1.0  # starts full; challenges multiply this down
-        self.above = None
-        self.below = None
-
-    @property
-    def material(self):
-        return self.material_name
-
-    @property
-    def weight(self):
-        return self.units * self.weight_per_unit
-
-    # alias used by older tests / guide wording
-    total_weight = weight
-
-    @property
-    def capacity(self):
-        """How much weight this floor can hold right now."""
-        return self.capacity_mult * self.height * CAPACITY_CONSTANT * self.integrity
-
-    def take_damage(self, percent: float):
-        """Multiplicative damage: 10% twice → 0.9 × 0.9 = 0.81."""
-        self.integrity = max(0.0, self.integrity * (1.0 - percent))
-
-    def __repr__(self):
-        return (
-            f"Floor({self.material_name}, {self.height}m, "
-            f"w={self.weight:.0f}, cap={self.capacity:.0f})"
-        )
-
-
 class Tower:
-    """Doubly linked list: ground ↔ … ↔ top."""
-
     def __init__(self):
-        self.ground = None
-        self.top = None
-        self.size = 0
-        self._total_height = 0.0
+        self.ground = None   # bottom floor
+        self.top = None      # top floor
+        self.size = 0        # how many floors
+        self.height_m = 0.0  # total height in meters
 
     def is_empty(self):
         return self.ground is None
@@ -67,135 +19,153 @@ class Tower:
     def floor_count(self):
         return self.size
 
-    @property
-    def total_height(self):
-        return self._total_height
+    def get_height(self):
+        return self.height_m
 
-    def traverse(self):
-        """Yield floors from ground to top."""
-        cur = self.ground
-        while cur:
-            yield cur
-            cur = cur.above
+    def floors_from_ground(self):
+        """Normal Python list: [ground, ..., top]."""
+        result = []
+        floor = self.ground
+        while floor is not None:
+            result.append(floor)
+            floor = floor.above
+        return result
 
-    def floors_bottom_up(self):
-        return list(self.traverse())
-
-    def insert_at(self, position: int, floor: Floor):
-        """Insert so the new floor becomes index `position` (0 = ground)."""
+    def insert_at(self, position, new_floor):
+        """Put new_floor at this index. 0 = ground, size = on top."""
         if position < 0 or position > self.size:
-            raise IndexError(f"position {position} not in [0, {self.size}]")
+            raise IndexError("bad position")
 
         if self.is_empty():
-            # Only floor
-            self.ground = self.top = floor
-            floor.above = floor.below = None
+            self.ground = new_floor
+            self.top = new_floor
+            new_floor.above = None
+            new_floor.below = None
+
         elif position == 0:
-            # New ground
-            floor.above, floor.below = self.ground, None
-            self.ground.below = floor
-            self.ground = floor
+            new_floor.above = self.ground
+            new_floor.below = None
+            self.ground.below = new_floor
+            self.ground = new_floor
+
         elif position == self.size:
-            # New top
-            floor.below, floor.above = self.top, None
-            self.top.above = floor
-            self.top = floor
+            new_floor.below = self.top
+            new_floor.above = None
+            self.top.above = new_floor
+            self.top = new_floor
+
         else:
-            # Middle: sit above the floor currently at position-1
-            cur = self.ground
+            floor_below = self.ground
             for _ in range(position - 1):
-                cur = cur.above
-            above = cur.above
-            cur.above = floor
-            floor.below = cur
-            floor.above = above
-            above.below = floor
+                floor_below = floor_below.above
+
+            floor_above = floor_below.above
+            floor_below.above = new_floor
+            new_floor.below = floor_below
+            new_floor.above = floor_above
+            floor_above.below = new_floor
 
         self.size += 1
-        self._total_height += floor.height
+        self.height_m += new_floor.height
 
-    def remove(self, floor: Floor):
-        """Unlink one floor and fix neighbor pointers."""
-        if floor.below:
+    def remove(self, floor):
+        """Take one floor out of the linked list."""
+        if floor.below is not None:
             floor.below.above = floor.above
         else:
             self.ground = floor.above
 
-        if floor.above:
+        if floor.above is not None:
             floor.above.below = floor.below
         else:
             self.top = floor.below
 
-        self._total_height -= floor.height
+        self.height_m -= floor.height
         self.size -= 1
-        floor.above = floor.below = None
+        floor.above = None
+        floor.below = None
 
-    # --- Stability (recursion + scan) ---
+    # --- recursion: weight above a floor ---
 
-    def load_above(self, floor: Floor) -> float:
-        """Total weight resting on this floor (recursive)."""
-        if floor.above is None:          # base case: top floor
+    def load_above(self, floor):
+        """Total weight of every floor above this one."""
+        if floor.above is None:
             return 0.0
-        return floor.above.weight + self.load_above(floor.above)
 
-    def safety_ratio(self, floor: Floor) -> float:
-        """capacity / load. Below 1.0 means the floor fails."""
+        next_floor = floor.above
+        return next_floor.get_weight() + self.load_above(next_floor)
+
+    def hold_ratio(self, floor):
+        """max_load / load. Under 1.0 means the floor breaks."""
         load = self.load_above(floor)
-        return float("inf") if load == 0 else floor.capacity / load
+        if load == 0:
+            return 999.0
+        return floor.get_max_load() / load
 
     def find_weakest_floor(self):
-        """Linear scan for the lowest safety ratio."""
-        floors = self.floors_bottom_up()
+        """Check every floor; return the one closest to breaking."""
+        floors = self.floors_from_ground()
         if not floors:
             return None
+
         weakest = floors[0]
-        worst = self.safety_ratio(weakest)
-        for f in floors[1:]:
-            r = self.safety_ratio(f)
-            if r < worst:
-                worst, weakest = r, f
+        worst_ratio = self.hold_ratio(weakest)
+
+        for floor in floors[1:]:
+            ratio = self.hold_ratio(floor)
+            if ratio < worst_ratio:
+                worst_ratio = ratio
+                weakest = floor
+
         return weakest
 
-    def check_stability(self):
+    def check_stable(self):
+        """Return (ratio, weakest_floor). ratio < 1.0 means collapse."""
         if self.is_empty():
-            return float("inf"), None
+            return 999.0, None
+
         weakest = self.find_weakest_floor()
-        return self.safety_ratio(weakest), weakest
+        return self.hold_ratio(weakest), weakest
 
-    # --- Collapse (stack) ---
+    # --- stack: collapse ---
 
-    def collapse(self, failed_floor: Floor = None):
-        """Remove the failed floor and everything above it (stack / LIFO).
+    def collapse(self, broken_floor=None):
+        """Remove the broken floor and every floor above it.
 
-        Returns (list_of_fallen_floors, height_lost).
+        Returns (list of fallen floors, meters lost).
         """
-        if failed_floor is None:
-            ratio, failed_floor = self.check_stability()
-            if failed_floor is None or ratio >= 1.0:
+        if broken_floor is None:
+            ratio, broken_floor = self.check_stable()
+            if broken_floor is None or ratio >= 1.0:
                 return [], 0.0
 
-        if self.is_empty() or failed_floor not in self.floors_bottom_up():
+        if self.is_empty():
             return [], 0.0
 
-        # 1) Push failed → top onto a stack
+        if broken_floor not in self.floors_from_ground():
+            return [], 0.0
+
+        # Step 1: push broken floor → top onto a stack
         stack = []
-        cur = failed_floor
-        while cur:
-            stack.append(cur)
-            cur = cur.above
+        floor = broken_floor
+        while floor is not None:
+            stack.append(floor)
+            floor = floor.above
 
-        # 2) Pop top-first so we always remove the current top of the tower
-        fallen, lost = [], 0.0
+        # Step 2: pop from the top first (last in, first out)
+        fallen = []
+        meters_lost = 0.0
         while stack:
-            f = stack.pop()
-            lost += f.height
-            self.remove(f)
-            fallen.append(f)
+            falling_floor = stack.pop()
+            meters_lost += falling_floor.height
+            self.remove(falling_floor)
+            fallen.append(falling_floor)
 
-        # 3) Rare cascade: another floor may now be overloaded
-        ratio, weakest = self.check_stability()
+        # Step 3: if another floor is now overloaded, collapse again
+        ratio, weakest = self.check_stable()
         if weakest is not None and ratio < 1.0:
-            more, extra = self.collapse(weakest)
-            fallen.extend(more)
-            lost += extra
-        return fallen, lost
+            more_fallen, more_meters = self.collapse(weakest)
+            fallen.extend(more_fallen)
+            meters_lost += more_meters
+
+        return fallen, meters_lost

@@ -1,34 +1,62 @@
-"""Material table — a hash table (Python dict).
+"""Material stats live in a dict (hash table / lookup table).
 
-Why a dict?
-  Looking up material stats by (tier, band) is O(1) on average.
-  Adding a new material is one new entry — no if/elif chain to edit.
+DSA #1 — Hash table:
+  MATERIALS[(tier, group)] → {name, weight, strength}
 """
 
 from constants import TIER_RANGES, UNITS_PER_AMOUNT
 
-# Key = (tier, band). Band comes from digit 3: 0–4 → "low", 5–9 → "high".
+# digit 3 of the roll:
+#   0-4 → group "a" (first material in the tier)
+#   5-9 → group "b" (second material in the tier)
 MATERIALS = {
-    ("junk", "low"):   {"name": "toothpicks",  "weight": 0.5, "capacity": 0.3},
-    ("junk", "high"):  {"name": "rotten_wood", "weight": 0.8, "capacity": 0.2},
-    ("common", "low"): {"name": "wood",        "weight": 1.0, "capacity": 1.0},
-    ("common", "high"):{"name": "brick",       "weight": 2.0, "capacity": 1.6},
-    ("strong", "low"): {"name": "steel",       "weight": 2.5, "capacity": 4.5},
-    ("strong", "high"):{"name": "concrete",    "weight": 3.0, "capacity": 3.0},
+    ("junk", "a"): {
+        "name": "toothpicks",
+        "weight": 0.5,
+        "strength": 0.3,
+    },
+    ("junk", "b"): {
+        "name": "rotten_wood",
+        "weight": 0.8,
+        "strength": 0.2,
+    },
+    ("common", "a"): {
+        "name": "wood",
+        "weight": 1.0,
+        "strength": 1.0,
+    },
+    ("common", "b"): {
+        "name": "brick",
+        "weight": 2.0,
+        "strength": 1.6,
+    },
+    ("strong", "a"): {
+        "name": "steel",
+        "weight": 2.5,
+        "strength": 4.5,
+    },
+    ("strong", "b"): {
+        "name": "concrete",
+        "weight": 3.0,
+        "strength": 3.0,
+    },
 }
 
 
-def tier_for_digit(digit: int) -> str:
-    """Map digit 1 of the roll to junk / common / strong."""
+def tier_for_digit(digit):
+    """Digit 1 of the roll → junk / common / strong."""
     return TIER_RANGES[digit]
 
 
-def get_material(tier: str, material_digit: int) -> dict:
-    """Return {name, weight, capacity} for this tier + digit."""
-    band = "low" if material_digit <= 4 else "high"
-    return MATERIALS[(tier, band)]
+def get_material(tier, material_digit):
+    """Look up one material from the dict."""
+    if material_digit <= 4:
+        group = "a"
+    else:
+        group = "b"
+    return MATERIALS[(tier, group)]
 
 
-def calculate_units(amount: int) -> int:
-    """Convert amount digit (1–10) into material units."""
+def units_from_amount(amount):
+    """Digit 2 (1-10) → how many material units the floor uses."""
     return amount * UNITS_PER_AMOUNT

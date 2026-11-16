@@ -1,8 +1,8 @@
-"""Random challenge events as the tower climbs.
+"""Challenges that fire when the tower grows tall enough.
 
-DSA used here:
-  Min-heap       — next challenge is always heap[0] (smallest height)
-  Binary search  — find which floor sits at a given height (bisect)
+DSA used here (2 of the 6):
+  Min-heap       — smallest challenge height is always at the front
+  Binary search  — find which floor sits at a given height
 """
 
 import heapq
@@ -19,7 +19,7 @@ from constants import (
     WINDSTORM_DAMAGE,
 )
 
-TYPES = ("earthquake", "windstorm", "drunk_driver")
+EVENT_NAMES = ("earthquake", "windstorm", "drunk_driver")
 DAMAGE = {
     "earthquake": EARTHQUAKE_DAMAGE,
     "windstorm": WINDSTORM_DAMAGE,
@@ -27,87 +27,96 @@ DAMAGE = {
 }
 
 
-def generate_challenge_heights(
-    n=NUM_CHALLENGES,
-    lo=CHALLENGE_MIN_HEIGHT,
-    hi=CHALLENGE_MAX_HEIGHT,
-    gap=CHALLENGE_MIN_GAP,
-):
-    """Pick n heights in [lo, hi], each at least `gap` meters apart.
-
-    Strategy: place them in order from low to high so a gap is always possible.
-    """
+def make_challenge_heights():
+    """Pick NUM_CHALLENGES heights, spaced at least CHALLENGE_MIN_GAP apart."""
     heights = []
-    next_lo = lo
-    for remaining in range(n, 0, -1):
-        # Leave room for the later challenges (each needs `gap` after the previous)
-        max_for_this = hi - gap * (remaining - 1)
-        if next_lo > max_for_this:
+    lowest_allowed = CHALLENGE_MIN_HEIGHT
+
+    for left in range(NUM_CHALLENGES, 0, -1):
+        highest_allowed = CHALLENGE_MAX_HEIGHT - CHALLENGE_MIN_GAP * (left - 1)
+        if lowest_allowed > highest_allowed:
             break
-        h = random.randint(next_lo, max_for_this)
-        heights.append(h)
-        next_lo = h + gap
+        height = random.randint(lowest_allowed, highest_allowed)
+        heights.append(height)
+        lowest_allowed = height + CHALLENGE_MIN_GAP
+
     return heights
 
 
 def make_heap(heights=None):
-    """Build a min-heap of challenge heights."""
-    heap = list(heights if heights is not None else generate_challenge_heights())
+    """Turn a list of heights into a min-heap (smallest on top)."""
+    if heights is None:
+        heights = make_challenge_heights()
+    heap = list(heights)
     heapq.heapify(heap)
     return heap
 
 
-def cumulative_heights(tower):
-    """Running total of height from ground up — a sorted list."""
-    totals = []
+def height_milestones(tower):
+    """Running totals from ground up, e.g. [10, 25, 40] for floors 10+15+15.
+
+    This list is sorted, so we can binary-search it.
+    """
+    milestones = []
     total = 0.0
-    for floor in tower.floors_bottom_up():
+    for floor in tower.floors_from_ground():
         total += floor.height
-        totals.append(total)
-    return totals
+        milestones.append(total)
+    return milestones
 
 
-def find_floor_at_height(tower, height):
-    """Binary search: which floor contains `height` meters from the ground?"""
-    floors = tower.floors_bottom_up()
+def find_floor_at_height(tower, target_height):
+    """Binary search: which floor contains `target_height` meters from ground?"""
+    floors = tower.floors_from_ground()
     if not floors:
         return None
-    cum = cumulative_heights(tower)
-    idx = bisect_right(cum, height - 1e-9)
-    if idx >= len(floors):
-        idx = len(floors) - 1
-    return floors[idx]
+
+    milestones = height_milestones(tower)
+    index = bisect_right(milestones, target_height - 1e-9)
+    if index >= len(floors):
+        index = len(floors) - 1
+    return floors[index]
 
 
-def apply_challenge(tower, kind):
-    """Apply one challenge's damage. Returns a short description."""
-    floors = tower.floors_bottom_up()
+def apply_event(tower, event_name):
+    """Hurt floors. Returns a short message for the sidebar."""
+    floors = tower.floors_from_ground()
     if not floors:
-        return f"{kind}: empty tower"
+        return event_name + ": empty tower"
 
-    pct = DAMAGE[kind]
-    if kind == "earthquake":
-        for f in floors:
-            f.take_damage(pct)
-        return f"Earthquake −{int(pct * 100)}% all floors"
+    damage = DAMAGE[event_name]
+    percent = int(damage * 100)
 
-    if kind == "windstorm":
-        for f in floors[-3:]:
-            f.take_damage(pct)
-        return f"Windstorm −{int(pct * 100)}% top floors"
+    if event_name == "earthquake":
+        for floor in floors:
+            floor.take_damage(damage)
+        return f"Earthquake -{percent}% all floors"
 
-    # drunk driver hits the ground floor (found via binary search)
-    ground = find_floor_at_height(tower, 0.1) or floors[0]
-    ground.take_damage(pct)
-    return f"Drunk driver −{int(pct * 100)}% ground"
+    if event_name == "windstorm":
+        for floor in floors[-3:]:
+            floor.take_damage(damage)
+        return f"Windstorm -{percent}% top floors"
+
+    # drunk driver → binary search finds the ground floor
+    ground_floor = find_floor_at_height(tower, 0.1)
+    if ground_floor is None:
+        ground_floor = floors[0]
+    ground_floor.take_damage(damage)
+    return f"Drunk driver -{percent}% ground"
 
 
-def process_challenges(tower, heap):
-    """Pop and apply every challenge whose height ≤ current tower height."""
-    events, triggered = [], []
-    while heap and heap[0] <= tower.total_height:
-        h = heapq.heappop(heap)
-        kind = random.choice(TYPES)
-        events.append(f"@{h}m {apply_challenge(tower, kind)}")
-        triggered.append(h)
-    return events, triggered
+def run_challenges(tower, challenge_heap):
+    """Pop and apply every challenge whose height <= tower height.
+
+    Min-heap: challenge_heap[0] is always the next (smallest) height.
+    """
+    messages = []
+    fired = []
+
+    while challenge_heap and challenge_heap[0] <= tower.get_height():
+        height = heapq.heappop(challenge_heap)
+        event_name = random.choice(EVENT_NAMES)
+        messages.append(f"@{height}m {apply_event(tower, event_name)}")
+        fired.append(height)
+
+    return messages, fired

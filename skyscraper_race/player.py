@@ -1,30 +1,34 @@
-"""One player: name, tower, rolls, and personal challenge heap."""
+"""One player: name, tower, rolls left, and a challenge heap."""
 
-from challenges import generate_challenge_heights, make_heap
+from challenges import make_challenge_heights, make_heap
 from tower import Tower
 
 
 class Player:
-    def __init__(self, name: str, rolls_per_turn: int = 3):
+    def __init__(self, name, rolls_per_turn=3):
         self.name = name
         self.tower = Tower()
         self.rolls_per_turn = rolls_per_turn
-        self.rolls_remaining = rolls_per_turn
-        self.current_roll = None  # decoded roll waiting to be placed
-        self.challenge_heights = generate_challenge_heights()
+        self.rolls_left = rolls_per_turn
+        self.pending_roll = None  # floor recipe waiting to be placed
+
+        # DSA: min-heap of challenge heights (smallest next)
+        self.challenge_heights = make_challenge_heights()
         self.challenge_heap = make_heap(list(self.challenge_heights))
         self.won = False
 
     def reset_rolls(self):
-        self.rolls_remaining = self.rolls_per_turn
-        self.current_roll = None
+        self.rolls_left = self.rolls_per_turn
+        self.pending_roll = None
 
     def tower_height(self):
-        return self.tower.total_height
+        return self.tower.get_height()
 
     def floor_count(self):
-        return self.tower.size
+        return self.tower.floor_count()
 
     def next_challenge(self):
-        """Peek at the next challenge height (min-heap root), or None."""
-        return self.challenge_heap[0] if self.challenge_heap else None
+        """Peek at the heap root (next challenge), or None."""
+        if self.challenge_heap:
+            return self.challenge_heap[0]
+        return None

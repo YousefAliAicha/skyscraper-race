@@ -3,7 +3,7 @@
 A 2-player race to build a skyscraper to **150 meters**.  
 Python 3 + [game2dboard](https://pypi.org/project/game2dboard/).
 
-Roll materials, choose where each floor goes, keep the tower stable, and beat challenges on the way up.
+Roll materials, choose where each floor goes, keep the tower stable, and survive challenges on the way up.
 
 ## Install
 
@@ -36,7 +36,7 @@ python main.py        # game
 | `R` or **ROLL** | Get a new floor |
 | `↑` / `↓` | Move the place arrow |
 | `Enter` / `Space` | Place at the arrow |
-| Click your tower | Place at that height |
+| Click your tower | Move the arrow to that height |
 | `S` or **SCRAP** | Discard the roll |
 | `Esc` | Leave to menu |
 
@@ -50,41 +50,44 @@ Three rolls per turn. First to **150 m** wins.
 ```
 skyscraper_race/
   constants.py    game numbers
-  materials.py    material lookup (hash table)
+  materials.py    material dict (hash table)
   roll.py         5-digit roll decode
-  tower.py        linked-list tower, load, collapse
-  challenges.py   challenge heap + height search
-  player.py       player state
-  game.py         turn logic
-  main.py         UI entry point
+  floor.py        one floor / linked-list node
+  tower.py        linked list, recursion, stack
+  challenges.py   min-heap + binary search
+  player.py       one player's state
+  game.py         turn logic (no GUI)
   screens.py      menu / how-to / win screens
+  match.py        match board + sidebar
+  main.py         app entry (menu loop)
   assets.py       image generator
   test_core.py    tests
   demo.py         headless autoplay
   img/            board sprites
 ```
 
-## Data structures
+## Data structures (6)
 
-| Structure | File | Role |
-|-----------|------|------|
-| Hash table | `materials.py` | Material stats by tier |
-| Linked list | `tower.py` | Tower floors |
-| Recursion | `tower.py` | Weight above a floor |
-| Stack | `tower.py` | Collapse removal |
-| Min-heap | `challenges.py` | Next challenge height |
-| Binary search | `challenges.py` | Floor at a given height |
+| # | Structure | File | Role |
+|---|-----------|------|------|
+| 1 | Hash table (dict) | `materials.py` | Material stats by tier |
+| 2 | Linked list | `floor.py` + `tower.py` | Tower floors |
+| 3 | Recursion | `tower.py` → `load_above` | Weight above a floor |
+| 4 | Stack | `tower.py` → `collapse` | Remove failed floors |
+| 5 | Min-heap | `challenges.py` | Next challenge height |
+| 6 | Binary search | `challenges.py` | Floor at a given height |
 
 ## Learning the code
 
-Read in this order — each file is short and commented:
+Read in this order — each file is short:
 
-1. `constants.py` — tune numbers here
+1. `constants.py`
 2. `materials.py` — dict lookup
-3. `roll.py` — decode a 5-digit roll
-4. `tower.py` — linked list, load, collapse
-5. `challenges.py` — heap + height search
-6. `game.py` — turn flow (no GUI)
-7. `main.py` — board UI
+3. `roll.py` — decode a roll
+4. `floor.py` — one node
+5. `tower.py` — list + recursion + stack
+6. `challenges.py` — heap + binary search
+7. `game.py` — turn flow
+8. `match.py` / `main.py` — UI
 
 Run `python test_core.py` after any change.

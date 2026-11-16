@@ -1,7 +1,4 @@
-"""Console autoplay — no GUI. Run: python demo.py
-
-Useful to see turn flow and collapses without opening the window.
-"""
+"""Console autoplay — no GUI. Run: python demo.py"""
 
 import random
 
@@ -11,13 +8,14 @@ from game import Game
 def show(game):
     print(f"\n{game.message}")
     for player in game.players:
-        stack = " | ".join(
-            f"{f.material}:{f.height}m" for f in player.tower.floors_bottom_up()
-        ) or "empty"
-        nxt = player.next_challenge()
+        parts = []
+        for floor in player.tower.floors_from_ground():
+            parts.append(f"{floor.material_name}:{floor.height}m")
+        stack_text = " | ".join(parts) if parts else "empty"
+        next_height = player.next_challenge()
         print(
             f"  {player.name}: {player.tower_height():.0f}m  "
-            f"[{stack}]  next challenge={nxt}"
+            f"[{stack_text}]  next challenge={next_height}"
         )
 
 

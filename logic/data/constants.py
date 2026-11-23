@@ -1,0 +1,35 @@
+"""Game numbers. Change these to rebalance the game."""
+
+TARGET_HEIGHT = 150
+ROLLS_PER_TURN = 3
+
+ROLL_MIN = 10000
+ROLL_MAX = 99999
+
+TIER_RANGES = {
+    1: "junk", 2: "junk", 3: "junk",
+    4: "common", 5: "common", 6: "common", 7: "common",
+    8: "strong", 9: "strong",
+}
+
+UNITS_PER_AMOUNT = 150
+CAPACITY_CONSTANT = 1200
+
+NUM_CHALLENGES = 3
+CHALLENGE_MIN_HEIGHT = 50
+CHALLENGE_MAX_HEIGHT = 130
+CHALLENGE_MIN_GAP = 25
+EARTHQUAKE_DAMAGE = 0.06
+WINDSTORM_DAMAGE = 0.10
+DRUNK_DRIVER_DAMAGE = 0.15
+
+# UI board (game/ only)
+BOARD_ROWS = 14
+BOARD_COLS = 10
+CELL_SIZE = 64
+P1_COLS = (0, 1, 2)
+P2_COLS = (7, 8, 9)
+TOWER_TOP_ROW = 2
+TOWER_BOTTOM_ROW = 12
+GROUND_ROW = 13
+MAX_VISIBLE_FLOORS = TOWER_BOTTOM_ROW - TOWER_TOP_ROW + 1
